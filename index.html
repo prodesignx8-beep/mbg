@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pendataan Penerima MBG - Makan Bergizi Gratis</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- jsPDF & jsPDF AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f7ff;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom scrollbar untuk tabel horizontal di HP */
+        .table-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: #0284c7;
+            border-radius: 8px;
+        }
+        .table-scroll::-webkit-scrollbar-thumb:hover {
+            background: #0369a1;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-toast {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- ==================== HALAMAN LOGIN ==================== -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-sky-100">
+            <div class="bg-sky-500 p-6 text-center relative overflow-hidden">
+                <div class="w-16 h-16 bg-amber-300 text-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md transform -rotate-3">
+                    <i data-lucide="utensils" class="w-8 h-8 stroke-[2.5]"></i>
+                </div>
+                <h1 class="text-2xl font-extrabold text-white tracking-tight">PENDATAAN MBG</h1>
+                <p class="text-sky-100 text-sm mt-1">Program Makan Bergizi Gratis</p>
+            </div>
+            
+            <form id="login-form" class="p-6 sm:p-8 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Username Petugas</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i data-lucide="user" class="w-5 h-5"></i>
+                        </span>
+                        <input type="text" id="login-username" required autocomplete="off"
+                            placeholder="Ketik ADMIN1 atau ADMIN2"
+                            oninput="this.value = this.value.toUpperCase()"
+                            class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none font-semibold uppercase transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Kode Keamanan / Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i data-lucide="lock" class="w-5 h-5"></i>
+                        </span>
+                        <input type="password" id="login-password" required inputmode="numeric"
+                            placeholder="Masukkan kode keamanan"
+                            class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none font-semibold transition">
+                    </div>
+                </div>
+
+                <button type="submit" 
+                    class="w-full py-3.5 px-4 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-bold rounded-xl shadow-lg shadow-amber-200 transition flex items-center justify-center gap-2 text-base">
+                    <i data-lucide="log-in" class="w-5 h-5"></i>
+                    MASUK KE SISTEM
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== DASHBOARD UTAMA ==================== -->
+    <div id="main-app" class="hidden flex-1 flex flex-col">
+        
+        <!-- Header / Navbar -->
+        <header class="bg-sky-600 text-white shadow-md sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-3">
+                    <div class="bg-amber-300 text-slate-900 p-2 rounded-xl shadow-sm">
+                        <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-base sm:text-lg leading-tight">PENERIMA MBG POS 5 BAKALANKRAPYAK</h1>
+                        <p class="text-xs text-sky-100 hidden sm:block">Sistem Pendataan Terpadu & Sinkronisasi Sheet</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Indikator Status Sinkronisasi Otomatis -->
+                    <div id="sync-indicator" class="hidden items-center gap-1.5 bg-sky-700/80 text-sky-100 px-3 py-1.5 rounded-xl text-xs font-medium">
+                        <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-amber-300"></i>
+                        <span>Sinkronisasi...</span>
+                    </div>
+
+                    <!-- Tombol Logout -->
+                    <button onclick="handleLogout()" 
+                        class="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-3 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span>Keluar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Baris Info Petugas Aktif & Sinkronisasi Real-time -->
+            <div class="bg-sky-800/70 border-t border-sky-500/30 px-4 py-1.5">
+                <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs text-sky-100">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Petugas Aktif: <strong id="active-admin-badge" class="text-amber-300">-</strong></span>
+                    </div>
+                    <span class="text-sky-200/90 hidden sm:inline">Mode Multi-Admin Aktif • Sinkronisasi otomatis setiap 8 detik</span>
+                </div>
+            </div>
+
+            <!-- Navigasi 3 Tab Menu Utama (Mudah dijangkau jempol di HP) -->
+            <nav class="bg-sky-700/70 backdrop-blur-sm border-t border-sky-500/40">
+                <div class="max-w-7xl mx-auto px-2 sm:px-4 grid grid-cols-3 gap-1.5 py-2">
+                    <button onclick="switchTab('balita')" id="tab-btn-balita"
+                        class="tab-btn flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition bg-amber-300 text-slate-900 shadow">
+                        <i data-lucide="baby" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span class="text-center leading-tight">1. BALITA</span>
+                    </button>
+                    <button onclick="switchTab('bumil')" id="tab-btn-bumil"
+                        class="tab-btn flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition text-sky-100 hover:bg-sky-600">
+                        <i data-lucide="heart-pulse" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span class="text-center leading-tight">2. IBU HAMIL</span>
+                    </button>
+                    <button onclick="switchTab('busui')" id="tab-btn-busui"
+                        class="tab-btn flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition text-sky-100 hover:bg-sky-600">
+                        <i data-lucide="smile" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span class="text-center leading-tight">3. IBU MENYUSUI</span>
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Konten Utama -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-5 space-y-6">
+            
+            <!-- Banner Judul Kategori & Statistik -->
+            <div class="bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <span class="inline-block bg-amber-300 text-slate-900 text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-1">KATEGORI AKTIF</span>
+                    <h2 id="category-title" class="text-lg sm:text-2xl font-extrabold tracking-tight">PENDATAAN BALITA PENERIMA MBG</h2>
+                    <p id="category-subtitle" class="text-sky-100 text-xs sm:text-sm mt-0.5">Kelola data sasaran balita secara akurat dan terintegrasi.</p>
+                </div>
+                <div class="bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 flex items-center gap-3 self-start sm:self-auto">
+                    <div class="p-2 bg-amber-300 text-slate-900 rounded-lg">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-sky-100">Total Terdata</p>
+                        <p id="total-count" class="text-xl font-extrabold leading-none">0 <span class="text-xs font-normal">Orang</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== FORM INPUT DATA ==================== -->
+            <section class="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
+                <div class="bg-amber-300/90 px-4 sm:px-6 py-3 border-b border-amber-400/50 flex items-center justify-between">
+                    <h3 id="form-heading" class="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-sky-700"></i>
+                        <span>TAMBAH DATA BARU</span>
+                    </h3>
+                    <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden text-xs font-bold bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition">
+                        Batal Edit
+                    </button>
+                </div>
+
+                <form id="data-form" class="p-4 sm:p-6">
+                    <input type="hidden" id="edit-id" value="">
+                    <!-- Container Field Dinamis -->
+                    <div id="dynamic-fields" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Diisi otomatis via JavaScript -->
+                    </div>
+
+                    <!-- Peringatan Validasi Khusus (Misal HPHT > 11 bulan) -->
+                    <div id="validation-warning" class="hidden mt-4 p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-r-xl text-xs sm:text-sm flex items-start gap-2.5">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                        <div id="validation-warning-text"></div>
+                    </div>
+
+                    <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
+                        <button type="button" onclick="resetForm()" 
+                            class="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition text-sm">
+                            Reset Form
+                        </button>
+                        <button type="submit" id="submit-btn"
+                            class="w-full sm:w-auto px-6 py-3 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold rounded-xl shadow-md shadow-sky-200 transition flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>SIMPAN DATA</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- ==================== TABEL DATA & TOOLBAR ==================== -->
+            <section class="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
+                <!-- Toolbar Pencarian & Export PDF -->
+                <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/70">
+                    <!-- Pencarian -->
+                    <div class="relative flex-1 max-w-md">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text" id="search-input" oninput="renderTable()"
+                            placeholder="Cari berdasarkan Nama atau NIK..."
+                            class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
+                    </div>
+
+                    <!-- Tombol Export PDF & Sinkron Manual -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="syncFromGoogleSheet(false)" 
+                            class="w-full sm:w-auto px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            <span>Sinkronkan</span>
+                        </button>
+                        <button onclick="exportToPDF()" 
+                            class="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="file-down" class="w-4 h-4"></i>
+                            <span>Export PDF</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabel Responsif dengan Scroll Horizontal Mulus -->
+                <div class="overflow-x-auto table-scroll">
+                    <table class="w-full text-left border-collapse min-w-[850px]">
+                        <thead>
+                            <!-- Baris Judul Tabel -->
+                            <tr class="bg-sky-500 text-white">
+                                <th id="table-banner-title" colspan="10" class="py-3 px-4 text-center font-extrabold text-sm sm:text-base tracking-wide border-b border-sky-600">
+                                    PENDATAAN BALITA PENERIMA MBG
+                                </th>
+                            </tr>
+                            <!-- Baris Header Kolom Kuning Cerah -->
+                            <tr id="table-headers" class="bg-amber-300 text-slate-900 font-extrabold text-xs uppercase border-b-2 border-slate-300">
+                                <!-- Diisi dinamis -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-200 text-sm">
+                            <!-- Diisi dinamis -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden py-12 px-4 text-center">
+                    <div class="w-16 h-16 bg-sky-50 text-sky-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="folder-open" class="w-8 h-8"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-700">Belum Ada Data Tersimpan</h4>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Silakan isi formulir di atas untuk menambahkan data penerima MBG.</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-500">
+            Sistem Pendataan Penerima MBG (Makan Bergizi Gratis) &bull; Tersimpan Otomatis di Perangkat & Google Sheets
+        </footer>
+    </div>
+
+    <!-- ==================== MODAL KONFIRMASI HAPUS ==================== -->
+    <div id="delete-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-toast p-5 text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i data-lucide="trash-2" class="w-6 h-6"></i>
+            </div>
+            <h3 class="font-extrabold text-slate-900 text-base">Hapus Data Ini?</h3>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Data yang dihapus akan hilang dari perangkat dan Google Sheets.</p>
+            <div class="mt-5 flex items-center justify-center gap-2.5">
+                <button onclick="closeDeleteModal()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm">
+                    Batal
+                </button>
+                <button id="confirm-delete-btn" class="py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm shadow">
+                    Ya, Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL EDIT DATA (RAMAH LAYAR HP) ==================== -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-auto animate-toast border border-amber-200">
+            <div class="bg-amber-400 px-5 py-4 text-slate-900 flex items-center justify-between">
+                <h3 class="font-extrabold text-base sm:text-lg flex items-center gap-2">
+                    <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    <span id="edit-modal-title">EDIT DATA PENERIMA</span>
+                </h3>
+                <button type="button" onclick="closeEditModal()" class="p-1.5 bg-amber-500/40 hover:bg-amber-500/70 rounded-xl transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="edit-modal-form" class="p-4 sm:p-6 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="modal-edit-id" value="">
+                <div id="modal-dynamic-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Field edit dirender dinamis di sini -->
+                </div>
+
+                <!-- Peringatan Validasi HPHT di Modal Edit -->
+                <div id="modal-validation-warning" class="hidden mt-4 p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-r-xl text-xs sm:text-sm flex items-start gap-2.5">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                    <div id="modal-validation-warning-text"></div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
+                    <button type="button" onclick="closeEditModal()" 
+                        class="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                        class="w-full sm:w-auto px-6 py-3 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold rounded-xl shadow-md shadow-sky-200 text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span>SIMPAN PERUBAHAN</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST NOTIFICATION ==================== -->
+    <div id="toast-container" class="fixed bottom-5 right-5 left-5 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ==================== JAVASCRIPT LOGIKA APLIKASI ==================== -->
+    <script>
+        // =========================================================================
+        // KONFIGURASI GOOGLE APPS SCRIPT & PENYIMPANAN LOKAL
+        // =========================================================================
+        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxuG4rh5pstYWTg5R5NxsAk7RUeL75-7wCr47cFRfBBiwL3DTrUlv3e8ambZ5TiysqA/exec'; // Isi URL Web App Google Apps Script Anda di sini
+
+        const STORAGE_KEYS = {
+            AUTH: 'mbg_auth_logged_in',
+            DATA: 'mbg_database_pos5'
+        };
+
+        // Konfigurasi Akun Multi-Admin (2 Admin dapat masuk bersamaan)
+        const ADMIN_ACCOUNTS = {
+            'ADMIN1': '3131',
+            'ADMIN2': '173',
+            'ADMIN': '173'
+        };
+
+        let currentTab = 'balita'; // 'balita' | 'bumil' | 'busui'
+        let deleteTargetId = null;
+        let currentAdminUser = localStorage.getItem('mbg_active_admin') || 'ADMIN1';
+        let activeLocks = { balita: {}, bumil: {}, busui: {} };
+        let autoSyncTimer = null;
+
+        let db = {
+            balita: [],
+            bumil: [],
+            busui: []
+        };
+
+        // Konfigurasi Struktur Setiap Tab
+        const TAB_CONFIG = {
+            balita: {
+                title: 'PENDATAAN BALITA PENERIMA MBG',
+                subtitle: 'Input dan kelola data penerima manfaat kategori Balita.',
+                sheetName: 'BALITA',
+                headers: ['NO', 'NAMA LENGKAP BALITA', 'TANGGAL LAHIR BALITA (DD/MM/YYYY)', 'GENDER (L/P)', 'NIK BALITA', 'NAMA IBU', 'NIK IBU', 'AKSI'],
+                pdfHeaders: ['NO', 'NAMA LENGKAP BALITA', 'TGL LAHIR BALITA', 'GENDER', 'NIK BALITA', 'NAMA IBU', 'NIK IBU'],
+                fields: [
+                    { name: 'namaBalita', label: 'Nama Lengkap Balita', type: 'text', placeholder: 'Contoh: Muhammad Al Fatih', required: true },
+                    { name: 'tglLahirBalita', label: 'Tanggal Lahir Balita', type: 'date', required: true },
+                    { name: 'gender', label: 'Gender (L / P)', type: 'select', options: ['L', 'P'], required: true },
+                    { name: 'nikBalita', label: 'NIK Balita (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Balita', required: true },
+                    { name: 'namaIbu', label: 'Nama Ibu', type: 'text', placeholder: 'Contoh: Siti Aminah', required: true },
+                    { name: 'nikIbu', label: 'NIK Ibu (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Ibu', required: true }
+                ]
+            },
+            bumil: {
+                title: 'PENDATAAN IBU HAMIL PENERIMA MBG',
+                subtitle: 'Input dan kelola data penerima manfaat kategori Ibu Hamil.',
+                sheetName: 'IBU_HAMIL',
+                headers: ['NO', 'NAMA LENGKAP IBU HAMIL', 'TANGGAL LAHIR IBU HAMIL (DD/MM/YYYY)', 'GENDER (P)', 'NIK IBU HAMIL', 'HPHT (DD/MM/YYYY)', 'AKSI'],
+                pdfHeaders: ['NO', 'NAMA LENGKAP IBU HAMIL', 'TGL LAHIR IBU HAMIL', 'GENDER', 'NIK IBU HAMIL', 'HPHT (DD/MM/YYYY)'],
+                fields: [
+                    { name: 'namaIbuHamil', label: 'Nama Lengkap Ibu Hamil', type: 'text', placeholder: 'Contoh: Rina Marlina', required: true },
+                    { name: 'tglLahirIbuHamil', label: 'Tanggal Lahir Ibu Hamil', type: 'date', required: true },
+                    { name: 'gender', label: 'Gender', type: 'readonly', value: 'P' },
+                    { name: 'nikIbuHamil', label: 'NIK Ibu Hamil (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK', required: true },
+                    { name: 'hpht', label: 'HPHT (Hari Pertama Haid Terakhir)', type: 'date', isHpht: true, required: true }
+                ]
+            },
+            busui: {
+                title: 'PENDATAAN IBU MENYUSUI PENERIMA MBG',
+                subtitle: 'Input dan kelola data penerima manfaat kategori Ibu Menyusui.',
+                sheetName: 'IBU_MENYUSUI',
+                headers: ['NO', 'NAMA LENGKAP IBU MENYUSUI', 'TANGGAL LAHIR IBU MENYUSUI (DD/MM/YYYY)', 'GENDER (P)', 'NIK IBU MENYUSUI', 'NAMA ANAK', 'NIK ANAK', 'TANGGAL LAHIR ANAK (DD/MM/YYYY)', 'AKSI'],
+                pdfHeaders: ['NO', 'NAMA IBU MENYUSUI', 'TGL LAHIR IBU', 'GENDER', 'NIK IBU', 'NAMA ANAK', 'NIK ANAK', 'TGL LAHIR ANAK'],
+                fields: [
+                    { name: 'namaIbuMenyusui', label: 'Nama Lengkap Ibu Menyusui', type: 'text', placeholder: 'Contoh: Dewi Lestari', required: true },
+                    { name: 'tglLahirIbuMenyusui', label: 'Tanggal Lahir Ibu Menyusui', type: 'date', required: true },
+                    { name: 'gender', label: 'Gender', type: 'readonly', value: 'P' },
+                    { name: 'nikIbuMenyusui', label: 'NIK Ibu Menyusui (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Ibu', required: true },
+                    { name: 'namaAnak', label: 'Nama Anak', type: 'text', placeholder: 'Contoh: Aisyah Putri', required: true },
+                    { name: 'nikAnak', label: 'NIK Anak (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Anak', required: true },
+                    { name: 'tglLahirAnak', label: 'Tanggal Lahir Anak', type: 'date', required: true }
+                ]
+            }
+        };
+
+        // --- INISIALISASI SAAT HALAMAN DIMUAT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadDatabase();
+
+            // Cek status login
+            if (localStorage.getItem(STORAGE_KEYS.AUTH) === 'true') {
+                showDashboard();
+            }
+
+            // Event Login
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            // Event Submit Form Data
+            document.getElementById('data-form').addEventListener('submit', handleFormSubmit);
+            // Event Submit Modal Edit Data
+            document.getElementById('edit-modal-form').addEventListener('submit', handleEditModalSubmit);
+        });
+
+        // --- FUNGSI NOTIFIKASI TOAST ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const styles = {
+                success: 'bg-emerald-600 text-white border-emerald-700',
+                error: 'bg-rose-600 text-white border-rose-700',
+                warning: 'bg-amber-500 text-slate-950 border-amber-600',
+                info: 'bg-sky-600 text-white border-sky-700'
+            };
+
+            const icons = {
+                success: 'check-circle',
+                error: 'x-circle',
+                warning: 'alert-triangle',
+                info: 'info'
+            };
+
+            toast.className = `${styles[type] || styles.info} border px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-semibold animate-toast pointer-events-auto`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'info'}" class="w-5 h-5 shrink-0"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- LOGIKA LOGIN & LOGOUT ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim().toUpperCase();
+            const password = document.getElementById('login-password').value.trim();
+
+            if (ADMIN_ACCOUNTS[username] && ADMIN_ACCOUNTS[username] === password) {
+                currentAdminUser = username;
+                localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
+                localStorage.setItem('mbg_active_admin', username);
+                showToast(`Login berhasil! Selamat datang, ${username}.`, 'success');
+                showDashboard();
+            } else {
+                showToast('Username atau Kode Keamanan salah! Gunakan ADMIN1 / ADMIN2 dan password 123.', 'error');
+            }
+        }
+
+        function handleLogout() {
+            const modalEditId = document.getElementById('modal-edit-id').value;
+            if (modalEditId) {
+                releaseEditLock(currentTab, modalEditId);
+            }
+            if (autoSyncTimer) {
+                clearInterval(autoSyncTimer);
+                autoSyncTimer = null;
+            }
+            localStorage.removeItem(STORAGE_KEYS.AUTH);
+            localStorage.removeItem('mbg_active_admin');
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('login-password').value = '';
+            showToast('Anda telah keluar dari sistem.', 'info');
+        }
+
+        function showDashboard() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('active-admin-badge').textContent = currentAdminUser;
+            switchTab(currentTab);
+            // Tarik data terbaru secara otomatis dari Google Sheets
+            syncFromGoogleSheet(true);
+
+            // Sinkronisasi berkala agar perubahan admin lain cepat terlihat
+            if (autoSyncTimer) clearInterval(autoSyncTimer);
+            autoSyncTimer = setInterval(() => {
+                if (!document.getElementById('main-app').classList.contains('hidden')) {
+                    syncFromGoogleSheet(true);
+                }
+            }, 8000);
+        }
+
+        // --- PENYIMPANAN LOCALSTORAGE ---
+        function loadDatabase() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEYS.DATA);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    db = {
+                        balita: parsed.balita || [],
+                        bumil: parsed.bumil || [],
+                        busui: parsed.busui || []
+                    };
+                }
+            } catch (err) {
+                console.error('Gagal memuat LocalStorage:', err);
+            }
+        }
+
+        function saveDatabase() {
+            localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(db));
+        }
+
+        // --- FORMATTER TANGGAL (YYYY-MM-DD <-> DD/MM/YYYY) ---
+        function formatToDDMMYYYY(isoDate) {
+            if (!isoDate) return '-';
+            if (isoDate.includes('/')) return isoDate;
+            const parts = isoDate.split('-');
+            if (parts.length !== 3) return isoDate;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function formatToISO(ddmmyyyy) {
+            if (!ddmmyyyy) return '';
+            if (ddmmyyyy.includes('-')) return ddmmyyyy;
+            const parts = ddmmyyyy.split('/');
+            if (parts.length !== 3) return ddmmyyyy;
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        // --- VALIDASI HPHT MAKSIMAL 11 BULAN KE BELAKANG ---
+        function checkHphtValidity(isoDateStr) {
+            if (!isoDateStr) return { valid: true };
+            const hphtDate = new Date(isoDateStr);
+            const today = new Date();
+            
+            const elevenMonthsAgo = new Date();
+            elevenMonthsAgo.setMonth(today.getMonth() - 11);
+
+            if (hphtDate > today) {
+                return {
+                    valid: false,
+                    message: 'Tanggal HPHT tidak boleh melebihi tanggal hari ini!'
+                };
+            }
+            if (hphtDate < elevenMonthsAgo) {
+                return {
+                    valid: false,
+                    message: 'PERINGATAN: Tanggal HPHT lebih dari 11 bulan ke belakang dari hari ini. Mohon periksa kembali usia kehamilan ibu.'
+                };
+            }
+            return { valid: true };
+        }
+
+        // --- NAVIGASI TAB ---
+        function switchTab(tabKey) {
+            currentTab = tabKey;
+            const config = TAB_CONFIG[tabKey];
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-300', 'text-slate-900', 'shadow');
+                btn.classList.add('text-sky-100', 'hover:bg-sky-600');
+            });
+            const activeBtn = document.getElementById(`tab-btn-${tabKey}`);
+            activeBtn.classList.remove('text-sky-100', 'hover:bg-sky-600');
+            activeBtn.classList.add('bg-amber-300', 'text-slate-900', 'shadow');
+
+            document.getElementById('category-title').textContent = config.title;
+            document.getElementById('category-subtitle').textContent = config.subtitle;
+            document.getElementById('table-banner-title').textContent = config.title;
+            document.getElementById('search-input').value = '';
+
+            resetForm();
+            renderTableHeaders();
+            renderTable();
+            lucide.createIcons();
+        }
+
+        // --- RENDER FORM DINAMIS ---
+        function renderFormFields(editData = null, targetContainerId = 'dynamic-fields', prefix = 'field') {
+            const container = document.getElementById(targetContainerId);
+            const config = TAB_CONFIG[currentTab];
+            container.innerHTML = '';
+
+            config.fields.forEach(field => {
+                const wrapper = document.createElement('div');
+                const val = editData ? (editData[field.name] || '') : (field.value || '');
+                const inputId = `${prefix}-${field.name}`;
+
+                let inputHtml = '';
+                if (field.type === 'select') {
+                    const opts = field.options.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o === 'L' ? 'L (Laki-laki)' : 'P (Perempuan)'}</option>`).join('');
+                    inputHtml = `
+                        <select id="${inputId}" name="${field.name}" required
+                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
+                            ${opts}
+                        </select>`;
+                } else if (field.type === 'readonly') {
+                    inputHtml = `
+                        <input type="text" id="${inputId}" name="${field.name}" value="P" readonly
+                            class="w-full px-3.5 py-3 bg-slate-200/70 border border-slate-300 rounded-xl text-sm font-bold text-slate-600 cursor-not-allowed outline-none">`;
+                } else if (field.type === 'nik') {
+                    inputHtml = `
+                        <input type="text" id="${inputId}" name="${field.name}" value="${val}"
+                            inputmode="numeric" maxlength="16" pattern="[0-9]{16}"
+                            placeholder="${field.placeholder}" required
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)"
+                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">`;
+                } else if (field.type === 'date') {
+                    const isoVal = formatToISO(val);
+                    const warningBoxId = prefix === 'modal-field' ? 'modal-validation-warning' : 'validation-warning';
+                    const warningTextId = prefix === 'modal-field' ? 'modal-validation-warning-text' : 'validation-warning-text';
+                    const extraAttr = field.isHpht ? `onchange="validateHphtRealtime(this.value, '${warningBoxId}', '${warningTextId}')"` : '';
+                    inputHtml = `
+                        <input type="date" id="${inputId}" name="${field.name}" value="${isoVal}" required ${extraAttr}
+                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">`;
+                } else {
+                    inputHtml = `
+                        <input type="text" id="${inputId}" name="${field.name}" value="${val}"
+                            placeholder="${field.placeholder || ''}" required
+                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">`;
+                }
+
+                wrapper.innerHTML = `
+                    <label for="${inputId}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                        ${field.label}
+                    </label>
+                    ${inputHtml}
+                `;
+                container.appendChild(wrapper);
+            });
+        }
+
+        function validateHphtRealtime(isoDate, boxId = 'validation-warning', textId = 'validation-warning-text') {
+            const warningBox = document.getElementById(boxId);
+            const warningText = document.getElementById(textId);
+            const check = checkHphtValidity(isoDate);
+
+            if (!check.valid) {
+                warningText.textContent = check.message;
+                warningBox.classList.remove('hidden');
+            } else {
+                warningBox.classList.add('hidden');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('validation-warning').classList.add('hidden');
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+            document.getElementById('form-heading').innerHTML = `
+                <i data-lucide="plus-circle" class="w-5 h-5 text-sky-700"></i>
+                <span>TAMBAH DATA BARU</span>
+            `;
+            document.getElementById('submit-btn').innerHTML = `
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>SIMPAN DATA</span>
+            `;
+            renderFormFields(null);
+            lucide.createIcons();
+        }
+
+        // --- CRUD: TAMBAH & UPDATE DATA ---
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const config = TAB_CONFIG[currentTab];
+            const editId = document.getElementById('edit-id').value;
+            const entry = {
+                id: editId ? editId : 'MBG-' + Date.now()
+            };
+
+            for (const field of config.fields) {
+                const el = document.getElementById(`field-${field.name}`);
+                let val = el.value.trim();
+
+                if (field.type === 'nik') {
+                    if (val.length !== 16) {
+                        showToast(`${field.label} harus berjumlah tepat 16 digit angka!`, 'error');
+                        el.focus();
+                        return;
+                    }
+                }
+
+                if (field.isHpht) {
+                    const check = checkHphtValidity(val);
+                    if (!check.valid) {
+                        showToast(check.message, 'warning');
+                        if (new Date(val) > new Date()) return;
+                    }
+                }
+
+                if (field.type === 'date') {
+                    val = formatToDDMMYYYY(val);
+                }
+
+                entry[field.name] = val;
+            }
+
+            if (editId) {
+                const idx = db[currentTab].findIndex(item => item.id === editId);
+                if (idx !== -1) {
+                    db[currentTab][idx] = entry;
+                    saveDatabase();
+                    renderTable();
+                    resetForm();
+                    showToast('Data berhasil diperbarui!', 'success');
+                    syncToGoogleSheet('update', currentTab, entry);
+                }
+            } else {
+                db[currentTab].push(entry);
+                saveDatabase();
+                renderTable();
+                resetForm();
+                showToast('Data baru berhasil disimpan!', 'success');
+                syncToGoogleSheet('create', currentTab, entry);
+            }
+        }
+
+        function startEdit(id) {
+            const item = db[currentTab].find(d => d.id === id);
+            if (!item) return;
+
+            // Cek apakah baris sedang diedit oleh admin lain
+            const lockInfo = activeLocks[currentTab] && activeLocks[currentTab][id];
+            if (lockInfo && lockInfo.admin && lockInfo.admin !== currentAdminUser) {
+                const elapsed = Date.now() - (lockInfo.timestamp || 0);
+                if (elapsed < 120000) { // Lock berlaku 2 menit
+                    showToast(`Data ini sedang diedit oleh ${lockInfo.admin}. Silakan edit data lain atau tunggu sebentar.`, 'warning');
+                    return;
+                }
+            }
+
+            const config = TAB_CONFIG[currentTab];
+            document.getElementById('modal-edit-id').value = item.id;
+            document.getElementById('edit-modal-title').textContent = `EDIT ${config.title} (${currentAdminUser})`;
+            document.getElementById('modal-validation-warning').classList.add('hidden');
+
+            // Tandai baris sedang diedit oleh admin saat ini
+            setEditLock(currentTab, item.id);
+
+            renderFormFields(item, 'modal-dynamic-fields', 'modal-field');
+            if (currentTab === 'bumil' && item.hpht) {
+                validateHphtRealtime(formatToISO(item.hpht), 'modal-validation-warning', 'modal-validation-warning-text');
+            }
+
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-modal');
+            const editingId = document.getElementById('modal-edit-id').value;
+            if (editingId) {
+                releaseEditLock(currentTab, editingId);
+            }
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('modal-edit-id').value = '';
+            renderTable();
+        }
+
+        function handleEditModalSubmit(e) {
+            e.preventDefault();
+            const config = TAB_CONFIG[currentTab];
+            const editId = document.getElementById('modal-edit-id').value;
+            if (!editId) return;
+
+            const updatedEntry = { id: editId };
+
+            for (const field of config.fields) {
+                const el = document.getElementById(`modal-field-${field.name}`);
+                let val = el.value.trim();
+
+                if (field.type === 'nik') {
+                    if (val.length !== 16) {
+                        showToast(`${field.label} harus berjumlah tepat 16 digit angka!`, 'error');
+                        el.focus();
+                        return;
+                    }
+                }
+
+                if (field.isHpht) {
+                    const check = checkHphtValidity(val);
+                    if (!check.valid) {
+                        showToast(check.message, 'warning');
+                        if (new Date(val) > new Date()) return;
+                    }
+                }
+
+                if (field.type === 'date') {
+                    val = formatToDDMMYYYY(val);
+                }
+
+                updatedEntry[field.name] = val;
+            }
+
+            const idx = db[currentTab].findIndex(item => item.id === editId);
+            if (idx !== -1) {
+                db[currentTab][idx] = updatedEntry;
+                releaseEditLock(currentTab, editId);
+                saveDatabase();
+                renderTable();
+                closeEditModal();
+                showToast(`Perubahan oleh ${currentAdminUser} berhasil disimpan!`, 'success');
+                syncToGoogleSheet('update', currentTab, updatedEntry);
+            }
+        }
+
+        // --- CRUD: HAPUS DATA ---
+        function openDeleteModal(id) {
+            // Cek apakah baris sedang diedit oleh admin lain
+            const lockInfo = activeLocks[currentTab] && activeLocks[currentTab][id];
+            if (lockInfo && lockInfo.admin && lockInfo.admin !== currentAdminUser) {
+                const elapsed = Date.now() - (lockInfo.timestamp || 0);
+                if (elapsed < 120000) {
+                    showToast(`Data ini sedang diedit oleh ${lockInfo.admin} sehingga tidak dapat dihapus sekarang.`, 'warning');
+                    return;
+                }
+            }
+
+            deleteTargetId = id;
+            const modal = document.getElementById('delete-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            document.getElementById('confirm-delete-btn').onclick = () => {
+                if (deleteTargetId) {
+                    const targetItem = db[currentTab].find(item => item.id === deleteTargetId);
+                    db[currentTab] = db[currentTab].filter(item => item.id !== deleteTargetId);
+                    saveDatabase();
+                    renderTable();
+                    closeDeleteModal();
+                    showToast('Data berhasil dihapus.', 'success');
+                    if (targetItem) {
+                        syncToGoogleSheet('delete', currentTab, targetItem);
+                    }
+                }
+            };
+        }
+
+        function closeDeleteModal() {
+            deleteTargetId = null;
+            const modal = document.getElementById('delete-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // --- RENDER TABEL ---
+        function renderTableHeaders() {
+            const tr = document.getElementById('table-headers');
+            const headers = TAB_CONFIG[currentTab].headers;
+            document.getElementById('table-banner-title').colSpan = headers.length;
+            tr.innerHTML = headers.map((h, i) => `
+                <th class="py-3.5 px-3.5 border-r border-amber-400/70 ${i === 0 || h === 'AKSI' ? 'text-center' : 'text-left'} whitespace-nowrap">
+                    ${h}
+                </th>
+            `).join('');
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('empty-state');
+            const keyword = document.getElementById('search-input').value.toLowerCase().trim();
+            const list = db[currentTab];
+
+            document.getElementById('total-count').innerHTML = `${list.length} <span class="text-xs font-normal">Orang</span>`;
+
+            const filtered = list.filter(item => {
+                if (!keyword) return true;
+                return Object.values(item).some(val => String(val).toLowerCase().includes(keyword));
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = filtered.map((item, index) => {
+                const no = index + 1;
+                const lockInfo = activeLocks[currentTab] && activeLocks[currentTab][item.id];
+                const isLockValid = lockInfo && lockInfo.admin && (Date.now() - (lockInfo.timestamp || 0) < 120000);
+                const isLockedByOther = isLockValid && lockInfo.admin !== currentAdminUser;
+
+                let colsHtml = '';
+
+                if (currentTab === 'balita') {
+                    colsHtml = `
+                        <td class="py-3 px-3.5 text-center font-bold text-slate-600">${no}</td>
+                        <td class="py-3 px-3.5 font-semibold text-slate-900">${escapeHtml(item.namaBalita)}</td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirBalita)}</td>
+                        <td class="py-3 px-3.5 text-center"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${item.gender === 'L' ? 'bg-sky-100 text-sky-800' : 'bg-pink-100 text-pink-800'}">${escapeHtml(item.gender)}</span></td>
+                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikBalita)}</td>
+                        <td class="py-3 px-3.5 font-medium">${escapeHtml(item.namaIbu)}</td>
+                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikIbu)}</td>
+                    `;
+                } else if (currentTab === 'bumil') {
+                    colsHtml = `
+                        <td class="py-3 px-3.5 text-center font-bold text-slate-600">${no}</td>
+                        <td class="py-3 px-3.5 font-semibold text-slate-900">${escapeHtml(item.namaIbuHamil)}</td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirIbuHamil)}</td>
+                        <td class="py-3 px-3.5 text-center"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-100 text-pink-800">P</span></td>
+                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikIbuHamil)}</td>
+                        <td class="py-3 px-3.5 font-semibold text-amber-800 whitespace-nowrap">${escapeHtml(item.hpht)}</td>
+                    `;
+                } else if (currentTab === 'busui') {
+                    colsHtml = `
+                        <td class="py-3 px-3.5 text-center font-bold text-slate-600">${no}</td>
+                        <td class="py-3 px-3.5 font-semibold text-slate-900">${escapeHtml(item.namaIbuMenyusui)}</td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirIbuMenyusui)}</td>
+                        <td class="py-3 px-3.5 text-center"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-100 text-pink-800">P</span></td>
+                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikIbuMenyusui)}</td>
+                        <td class="py-3 px-3.5 font-medium">${escapeHtml(item.namaAnak)}</td>
+                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikAnak)}</td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirAnak)}</td>
+                    `;
+                }
+
+                return `
+                    <tr class="hover:bg-sky-50/70 transition ${isLockedByOther ? 'bg-amber-50/90' : ''}">
+                        ${colsHtml}
+                        <td class="py-2.5 px-3.5 whitespace-nowrap text-center">
+                            ${isLockedByOther
+                                ? `<span class="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold">
+                                       <i data-lucide="lock" class="w-3.5 h-3.5 text-amber-700"></i>
+                                       <span>Diedit ${escapeHtml(lockInfo.admin)}</span>
+                                   </span>`
+                                : `<div class="inline-flex items-center gap-2">
+                                       <button onclick="startEdit('${item.id}')" 
+                                           class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
+                                           <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                                           <span>Edit</span>
+                                       </button>
+                                       <button onclick="openDeleteModal('${item.id}')" 
+                                           class="px-3.5 py-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
+                                           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                           <span>Hapus</span>
+                                       </button>
+                                   </div>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // --- EXPORT KE PDF (LANDSCAPE) ---
+        function exportToPDF() {
+            const list = db[currentTab];
+            if (list.length === 0) {
+                showToast('Tidak ada data untuk diexport ke PDF.', 'warning');
+                return;
+            }
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const config = TAB_CONFIG[currentTab];
+
+                const now = new Date();
+                const tglCetak = now.toLocaleDateString('id-ID', {
+                    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                doc.setFillColor(2, 132, 199);
+                doc.rect(14, 12, 269, 14, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(13);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`DATA ${config.title}`, 148.5, 21, { align: 'center' });
+
+                doc.setTextColor(60, 60, 60);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Tanggal Cetak: ${tglCetak} WIB  |  Total Penerima: ${list.length} Orang`, 14, 32);
+
+                const rows = list.map((item, idx) => {
+                    const no = idx + 1;
+                    if (currentTab === 'balita') {
+                        return [no, item.namaBalita, item.tglLahirBalita, item.gender, item.nikBalita, item.namaIbu, item.nikIbu];
+                    } else if (currentTab === 'bumil') {
+                        return [no, item.namaIbuHamil, item.tglLahirIbuHamil, 'P', item.nikIbuHamil, item.hpht];
+                    } else {
+                        return [no, item.namaIbuMenyusui, item.tglLahirIbuMenyusui, 'P', item.nikIbuMenyusui, item.namaAnak, item.nikAnak, item.tglLahirAnak];
+                    }
+                });
+
+                doc.autoTable({
+                    startY: 36,
+                    head: [config.pdfHeaders],
+                    body: rows,
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [252, 211, 77],
+                        textColor: [15, 23, 42],
+                        fontStyle: 'bold',
+                        fontSize: 8.5,
+                        halign: 'center'
+                    },
+                    bodyStyles: {
+                        fontSize: 8.5,
+                        textColor: [30, 41, 59]
+                    },
+                    columnStyles: {
+                        0: { halign: 'center', cellWidth: 12 }
+                    },
+                    styles: {
+                        cellPadding: 2.5,
+                        lineColor: [203, 213, 225],
+                        lineWidth: 0.2
+                    }
+                });
+
+                const fileName = `Data_${config.sheetName}_MBG_${now.toISOString().slice(0, 10)}.pdf`;
+                doc.save(fileName);
+                showToast('File PDF berhasil diunduh!', 'success');
+            } catch (err) {
+                console.error('Gagal export PDF:', err);
+                showToast('Terjadi kesalahan saat membuat PDF.', 'error');
+            }
+        }
+
+        // --- PENANDA EDIT BERSAMA (MULTI-ADMIN LOCK) ---
+        function setEditLock(category, recordId) {
+            if (!activeLocks[category]) activeLocks[category] = {};
+            activeLocks[category][recordId] = {
+                admin: currentAdminUser,
+                timestamp: Date.now()
+            };
+            renderTable();
+            syncLockToGoogleSheet('lock', category, recordId);
+        }
+
+        function releaseEditLock(category, recordId) {
+            if (activeLocks[category] && activeLocks[category][recordId]) {
+                delete activeLocks[category][recordId];
+            }
+            syncLockToGoogleSheet('unlock', category, recordId);
+        }
+
+        async function syncLockToGoogleSheet(lockAction, category, recordId) {
+            if (!GOOGLE_SHEET_WEB_APP_URL) return;
+            try {
+                await fetch(GOOGLE_SHEET_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: lockAction,
+                        category: category,
+                        recordId: recordId,
+                        admin: currentAdminUser
+                    })
+                });
+            } catch (err) {
+                console.error('Gagal sinkronisasi status edit admin:', err);
+            }
+        }
+
+        // --- INTEGRASI GOOGLE SHEETS (OTOMATIS) ---
+        function cleanNik(val) {
+            return String(val || '').replace(/^'+/, '').replace(/[^0-9]/g, '');
+        }
+
+        async function syncToGoogleSheet(action, category, record) {
+            if (!GOOGLE_SHEET_WEB_APP_URL) return;
+
+            try {
+                await fetch(GOOGLE_SHEET_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: action,
+                        category: category,
+                        record: record
+                    })
+                });
+            } catch (err) {
+                console.error('Gagal kirim ke Google Sheet:', err);
+                showToast('Data tersimpan di HP, namun gagal kirim ke Google Sheet.', 'warning');
+            }
+        }
+
+        async function syncFromGoogleSheet(silent = false) {
+            if (!GOOGLE_SHEET_WEB_APP_URL) {
+                if (!silent) {
+                    showToast('URL Google Sheet belum dikonfigurasi. Data tersimpan lokal di perangkat.', 'info');
+                }
+                return;
+            }
+
+            const indicator = document.getElementById('sync-indicator');
+            if (indicator) {
+                indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
+            }
+
+            try {
+                const url = `${GOOGLE_SHEET_WEB_APP_URL}?action=read&t=${Date.now()}`;
+                const res = await fetch(url, {
+                    method: 'GET',
+                    redirect: 'follow',
+                    cache: 'no-store'
+                });
+                
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                const json = await res.json();
+
+                if (json.status === 'success' && json.data) {
+                    db = {
+                        balita: (json.data.balita || []).map(item => ({
+                            ...item,
+                            nikBalita: cleanNik(item.nikBalita),
+                            nikIbu: cleanNik(item.nikIbu)
+                        })),
+                        bumil: (json.data.bumil || []).map(item => ({
+                            ...item,
+                            nikIbuHamil: cleanNik(item.nikIbuHamil)
+                        })),
+                        busui: (json.data.busui || []).map(item => ({
+                            ...item,
+                            nikIbuMenyusui: cleanNik(item.nikIbuMenyusui),
+                            nikAnak: cleanNik(item.nikAnak)
+                        }))
+                    };
+                    if (json.locks) {
+                        activeLocks = json.locks;
+                    }
+                    saveDatabase();
+                    renderTable();
+                    if (!silent) {
+                        showToast('Data berhasil disinkronkan dari Google Sheet!', 'success');
+                    }
+                }
+            } catch (err) {
+                console.error('Sinkronisasi otomatis Google Sheet:', err);
+                if (!silent) {
+                    showToast('Gagal menarik data dari Google Sheet.', 'error');
+                }
+            } finally {
+                if (indicator) {
+                    indicator.classList.add('hidden');
+                    indicator.classList.remove('flex');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
