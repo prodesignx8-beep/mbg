@@ -62,11 +62,6 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button onclick="syncFromGoogleSheet(false)" title="Perbarui Data"
-                        class="p-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">Perbarui</span>
-                    </button>
                     <button onclick="openLoginModal()" 
                         class="px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-extrabold rounded-xl shadow-md transition flex items-center gap-2 text-xs sm:text-sm">
                         <i data-lucide="shield-check" class="w-4 h-4"></i>
@@ -99,7 +94,7 @@
                             <span id="public-total-all" class="text-4xl sm:text-5xl font-extrabold text-amber-300">0</span>
                             <span class="text-sm font-semibold text-white">Jiwa</span>
                         </div>
-                        <p id="public-last-updated" class="text-[11px] text-sky-200 mt-2">Sinkronisasi otomatis aktif</p>
+                        <p id="public-last-updated" class="text-[11px] text-sky-200 mt-2">Terhubung langsung ke Google Sheets</p>
                     </div>
                 </div>
             </div>
@@ -331,10 +326,10 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <!-- Indikator Status Sinkronisasi Otomatis -->
+                    <!-- Indikator Status Pengiriman ke Google Sheet -->
                     <div id="sync-indicator" class="hidden items-center gap-1.5 bg-sky-700/80 text-sky-100 px-3 py-1.5 rounded-xl text-xs font-medium">
                         <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-amber-300"></i>
-                        <span>Sinkronisasi...</span>
+                        <span>Menyimpan ke Sheet...</span>
                     </div>
 
                     <!-- Tombol Logout -->
@@ -346,14 +341,14 @@
                 </div>
             </div>
 
-            <!-- Baris Info Petugas Aktif & Sinkronisasi Real-time -->
+            <!-- Baris Info Petugas Aktif -->
             <div class="bg-sky-800/70 border-t border-sky-500/30 px-4 py-1.5">
                 <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs text-sky-100">
                     <div class="flex items-center gap-2">
                         <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span>Petugas Aktif: <strong id="active-admin-badge" class="text-amber-300">-</strong></span>
                     </div>
-                    <span class="text-sky-200/90 hidden sm:inline">Mode Multi-Admin Aktif • Sinkronisasi otomatis setiap 8 detik</span>
+                    <span class="text-sky-200/90 hidden sm:inline">Terhubung Otomatis ke Google Sheets</span>
                 </div>
             </div>
 
@@ -453,13 +448,8 @@
                             class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
                     </div>
 
-                    <!-- Tombol Export PDF & Sinkron Manual -->
+                    <!-- Tombol Export PDF -->
                     <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="syncFromGoogleSheet(false)" 
-                            class="w-full sm:w-auto px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            <span>Sinkronkan</span>
-                        </button>
                         <button onclick="exportToPDF()" 
                             class="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5">
                             <i data-lucide="file-down" class="w-4 h-4"></i>
@@ -572,14 +562,14 @@
         // =========================================================================
         // KONFIGURASI GOOGLE APPS SCRIPT & PENYIMPANAN LOKAL
         // =========================================================================
-        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxuG4rh5pstYWTg5R5NxsAk7RUeL75-7wCr47cFRfBBiwL3DTrUlv3e8ambZ5TiysqA/exec'; // Isi URL Web App Google Apps Script Anda di sini
+        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxuG4rh5pstYWTg5R5NxsAk7RUeL75-7wCr47cFRfBBiwL3DTrUlv3e8ambZ5TiysqA/exec';
 
         const STORAGE_KEYS = {
             AUTH: 'mbg_auth_logged_in',
             DATA: 'mbg_database_pos5'
         };
 
-        // Konfigurasi Akun Multi-Admin (2 Admin dapat masuk bersamaan)
+        // Konfigurasi Akun Admin
         const ADMIN_ACCOUNTS = {
             'ADMIN1': '3131',
             'ADMIN2': '173',
@@ -590,10 +580,6 @@
         let publicSearchCategory = 'all'; // 'all' | 'balita' | 'bumil' | 'busui'
         let deleteTargetId = null;
         let currentAdminUser = localStorage.getItem('mbg_active_admin') || 'ADMIN1';
-        let activeLocks = { balita: {}, bumil: {}, busui: {} };
-        let autoSyncTimer = null;
-        let isMutating = false; // Mencegah auto-sync menimpa saat proses simpan/edit/hapus berlangsung
-        let lastMutationTime = 0;
 
         let db = {
             balita: [],
@@ -880,12 +866,7 @@
             closeLoginModal();
             document.getElementById('public-viewer').classList.remove('hidden');
             renderPublicSummary();
-            syncFromGoogleSheet(true);
-
-            if (autoSyncTimer) clearInterval(autoSyncTimer);
-            autoSyncTimer = setInterval(() => {
-                syncFromGoogleSheet(true);
-            }, 8000);
+            loadFromGoogleSheetOnce();
             lucide.createIcons();
         }
 
@@ -907,10 +888,6 @@
         }
 
         function handleLogout() {
-            const modalEditId = document.getElementById('modal-edit-id').value;
-            if (modalEditId) {
-                releaseEditLock(currentTab, modalEditId);
-            }
             localStorage.removeItem(STORAGE_KEYS.AUTH);
             localStorage.removeItem('mbg_active_admin');
             document.getElementById('login-password').value = '';
@@ -924,16 +901,8 @@
             document.getElementById('main-app').classList.remove('hidden');
             document.getElementById('active-admin-badge').textContent = currentAdminUser;
             switchTab(currentTab);
-            // Tarik data terbaru secara otomatis dari Google Sheets
-            syncFromGoogleSheet(true);
-
-            // Sinkronisasi berkala agar perubahan admin lain cepat terlihat
-            if (autoSyncTimer) clearInterval(autoSyncTimer);
-            autoSyncTimer = setInterval(() => {
-                if (!document.getElementById('main-app').classList.contains('hidden')) {
-                    syncFromGoogleSheet(true);
-                }
-            }, 8000);
+            // Muat data awal dari Google Sheet saat pertama kali masuk
+            loadFromGoogleSheetOnce();
         }
 
         // --- PENYIMPANAN LOCALSTORAGE ---
@@ -1283,6 +1252,7 @@
                 let val = el.value.trim();
 
                 if (field.type === 'nik') {
+                    val = cleanNik(val);
                     if (val.length !== 16) {
                         showToast(`${field.label} harus berjumlah tepat 16 digit angka!`, 'error');
                         el.focus();
@@ -1306,48 +1276,37 @@
             }
 
             if (editId) {
-                const idx = db[currentTab].findIndex(item => item.id === editId);
+                const idx = db[currentTab].findIndex(item => String(item.id) === String(editId));
                 if (idx !== -1) {
-                    lastMutationTime = Date.now();
                     db[currentTab][idx] = entry;
-                    saveDatabase();
-                    renderTable();
-                    resetForm();
-                    showToast('Data berhasil diperbarui!', 'success');
-                    syncToGoogleSheet('update', currentTab, entry);
+                } else {
+                    db[currentTab].push(entry);
                 }
+                saveDatabase();
+                renderTable();
+                renderPublicSummary();
+                resetForm();
+                showToast('Data berhasil diperbarui & dikirim ke Google Sheet!', 'success');
+                sendToGoogleSheet('update', currentTab, entry);
             } else {
-                lastMutationTime = Date.now();
                 db[currentTab].push(entry);
                 saveDatabase();
                 renderTable();
+                renderPublicSummary();
                 resetForm();
-                showToast('Data baru berhasil disimpan!', 'success');
-                syncToGoogleSheet('create', currentTab, entry);
+                showToast('Data baru berhasil disimpan & dikirim ke Google Sheet!', 'success');
+                sendToGoogleSheet('create', currentTab, entry);
             }
         }
 
         function startEdit(id) {
-            const item = db[currentTab].find(d => d.id === id);
+            const item = db[currentTab].find(d => String(d.id) === String(id));
             if (!item) return;
-
-            // Cek apakah baris sedang diedit oleh admin lain
-            const lockInfo = activeLocks[currentTab] && activeLocks[currentTab][id];
-            if (lockInfo && lockInfo.admin && lockInfo.admin !== currentAdminUser) {
-                const elapsed = Date.now() - (lockInfo.timestamp || 0);
-                if (elapsed < 120000) { // Lock berlaku 2 menit
-                    showToast(`Data ini sedang diedit oleh ${lockInfo.admin}. Silakan edit data lain atau tunggu sebentar.`, 'warning');
-                    return;
-                }
-            }
 
             const config = TAB_CONFIG[currentTab];
             document.getElementById('modal-edit-id').value = item.id;
-            document.getElementById('edit-modal-title').textContent = `EDIT ${config.title} (${currentAdminUser})`;
+            document.getElementById('edit-modal-title').textContent = `EDIT ${config.title}`;
             document.getElementById('modal-validation-warning').classList.add('hidden');
-
-            // Tandai baris sedang diedit oleh admin saat ini
-            setEditLock(currentTab, item.id);
 
             renderFormFields(item, 'modal-dynamic-fields', 'modal-field');
             if (currentTab === 'bumil' && item.hpht) {
@@ -1362,14 +1321,9 @@
 
         function closeEditModal() {
             const modal = document.getElementById('edit-modal');
-            const editingId = document.getElementById('modal-edit-id').value;
-            if (editingId) {
-                releaseEditLock(currentTab, editingId);
-            }
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             document.getElementById('modal-edit-id').value = '';
-            renderTable();
         }
 
         function handleEditModalSubmit(e) {
@@ -1419,41 +1373,21 @@
 
             const idx = db[currentTab].findIndex(item => String(item.id) === String(editId));
             if (idx !== -1) {
-                lastMutationTime = Date.now();
                 db[currentTab][idx] = updatedEntry;
-                releaseEditLock(currentTab, editId);
-                saveDatabase();
-                renderTable();
-                renderPublicSummary();
-                closeEditModal();
-                showToast(`Perubahan oleh ${currentAdminUser} berhasil disimpan!`, 'success');
-                syncToGoogleSheet('update', currentTab, updatedEntry);
             } else {
-                // Fallback jika data sempat bergeser saat sinkronisasi
-                lastMutationTime = Date.now();
                 db[currentTab].push(updatedEntry);
-                releaseEditLock(currentTab, editId);
-                saveDatabase();
-                renderTable();
-                renderPublicSummary();
-                closeEditModal();
-                showToast(`Perubahan berhasil disimpan!`, 'success');
-                syncToGoogleSheet('update', currentTab, updatedEntry);
             }
+
+            saveDatabase();
+            renderTable();
+            renderPublicSummary();
+            closeEditModal();
+            showToast('Perubahan berhasil disimpan & dikirim ke Google Sheet!', 'success');
+            sendToGoogleSheet('update', currentTab, updatedEntry);
         }
 
         // --- CRUD: HAPUS DATA ---
         function openDeleteModal(id) {
-            // Cek apakah baris sedang diedit oleh admin lain
-            const lockInfo = activeLocks[currentTab] && activeLocks[currentTab][id];
-            if (lockInfo && lockInfo.admin && lockInfo.admin !== currentAdminUser) {
-                const elapsed = Date.now() - (lockInfo.timestamp || 0);
-                if (elapsed < 120000) {
-                    showToast(`Data ini sedang diedit oleh ${lockInfo.admin} sehingga tidak dapat dihapus sekarang.`, 'warning');
-                    return;
-                }
-            }
-
             deleteTargetId = id;
             const modal = document.getElementById('delete-modal');
             modal.classList.remove('hidden');
@@ -1461,16 +1395,15 @@
 
             document.getElementById('confirm-delete-btn').onclick = () => {
                 if (deleteTargetId) {
-                    const targetItem = db[currentTab].find(item => item.id === deleteTargetId);
-                    lastMutationTime = Date.now();
-                    db[currentTab] = db[currentTab].filter(item => item.id !== deleteTargetId);
+                    const targetItem = db[currentTab].find(item => String(item.id) === String(deleteTargetId));
+                    db[currentTab] = db[currentTab].filter(item => String(item.id) !== String(deleteTargetId));
                     saveDatabase();
                     renderTable();
                     renderPublicSummary();
                     closeDeleteModal();
-                    showToast('Data berhasil dihapus.', 'success');
+                    showToast('Data berhasil dihapus & diperbarui di Google Sheet.', 'success');
                     if (targetItem) {
-                        syncToGoogleSheet('delete', currentTab, targetItem);
+                        sendToGoogleSheet('delete', currentTab, targetItem);
                     }
                 }
             };
@@ -1517,10 +1450,6 @@
             emptyState.classList.add('hidden');
             tbody.innerHTML = filtered.map((item, index) => {
                 const no = index + 1;
-                const lockInfo = activeLocks[currentTab] && activeLocks[currentTab][item.id];
-                const isLockValid = lockInfo && lockInfo.admin && (Date.now() - (lockInfo.timestamp || 0) < 120000);
-                const isLockedByOther = isLockValid && lockInfo.admin !== currentAdminUser;
-
                 let colsHtml = '';
 
                 if (currentTab === 'balita') {
@@ -1556,27 +1485,21 @@
                 }
 
                 return `
-                    <tr class="hover:bg-sky-50/70 transition ${isLockedByOther ? 'bg-amber-50/90' : ''}">
+                    <tr class="hover:bg-sky-50/70 transition">
                         ${colsHtml}
                         <td class="py-2.5 px-3.5 whitespace-nowrap text-center">
-                            ${isLockedByOther
-                                ? `<span class="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold">
-                                       <i data-lucide="lock" class="w-3.5 h-3.5 text-amber-700"></i>
-                                       <span>Diedit ${escapeHtml(lockInfo.admin)}</span>
-                                   </span>`
-                                : `<div class="inline-flex items-center gap-2">
-                                       <button onclick="startEdit('${item.id}')" 
-                                           class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
-                                           <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
-                                           <span>Edit</span>
-                                       </button>
-                                       <button onclick="openDeleteModal('${item.id}')" 
-                                           class="px-3.5 py-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
-                                           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                           <span>Hapus</span>
-                                       </button>
-                                   </div>`
-                            }
+                            <div class="inline-flex items-center gap-2">
+                                <button onclick="startEdit('${item.id}')" 
+                                    class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
+                                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                                    <span>Edit</span>
+                                </button>
+                                <button onclick="openDeleteModal('${item.id}')" 
+                                    class="px-3.5 py-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    <span>Hapus</span>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -1671,53 +1594,20 @@
             }
         }
 
-        // --- PENANDA EDIT BERSAMA (MULTI-ADMIN LOCK) ---
-        function setEditLock(category, recordId) {
-            if (!activeLocks[category]) activeLocks[category] = {};
-            activeLocks[category][recordId] = {
-                admin: currentAdminUser,
-                timestamp: Date.now()
-            };
-            renderTable();
-            syncLockToGoogleSheet('lock', category, recordId);
-        }
-
-        function releaseEditLock(category, recordId) {
-            if (activeLocks[category] && activeLocks[category][recordId]) {
-                delete activeLocks[category][recordId];
-            }
-            syncLockToGoogleSheet('unlock', category, recordId);
-        }
-
-        async function syncLockToGoogleSheet(lockAction, category, recordId) {
-            if (!GOOGLE_SHEET_WEB_APP_URL) return;
-            try {
-                await fetch(GOOGLE_SHEET_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: lockAction,
-                        category: category,
-                        recordId: recordId,
-                        admin: currentAdminUser
-                    })
-                });
-            } catch (err) {
-                console.error('Gagal sinkronisasi status edit admin:', err);
-            }
-        }
-
-        // --- INTEGRASI GOOGLE SHEETS (OTOMATIS) ---
+        // --- KONEKSI LANGSUNG KE GOOGLE SHEETS ---
         function cleanNik(val) {
             return String(val || '').replace(/^'+/, '').replace(/[^0-9]/g, '');
         }
 
-        async function syncToGoogleSheet(action, category, record) {
+        async function sendToGoogleSheet(action, category, record) {
             if (!GOOGLE_SHEET_WEB_APP_URL) return;
 
-            isMutating = true;
-            lastMutationTime = Date.now();
+            const indicator = document.getElementById('sync-indicator');
+            if (indicator) {
+                indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
+            }
+
             try {
                 await fetch(GOOGLE_SHEET_WEB_APP_URL, {
                     method: 'POST',
@@ -1731,28 +1621,17 @@
                 });
             } catch (err) {
                 console.error('Gagal kirim ke Google Sheet:', err);
-                showToast('Data tersimpan di HP, namun gagal kirim ke Google Sheet.', 'warning');
+                showToast('Data tersimpan di perangkat, namun gagal terkirim ke Google Sheet.', 'warning');
             } finally {
-                lastMutationTime = Date.now();
-                setTimeout(() => {
-                    isMutating = false;
-                }, 2500);
+                if (indicator) {
+                    indicator.classList.add('hidden');
+                    indicator.classList.remove('flex');
+                }
             }
         }
 
-        async function syncFromGoogleSheet(silent = false) {
-            if (!GOOGLE_SHEET_WEB_APP_URL) {
-                if (!silent) {
-                    showToast('URL Google Sheet belum dikonfigurasi. Data tersimpan lokal di perangkat.', 'info');
-                }
-                return;
-            }
-
-            // Jangan tarik data saat modal edit terbuka atau baru saja melakukan perubahan (< 5 detik)
-            const editModalOpen = !document.getElementById('edit-modal')?.classList.contains('hidden');
-            if (silent && (isMutating || editModalOpen || (Date.now() - lastMutationTime < 5000))) {
-                return;
-            }
+        async function loadFromGoogleSheetOnce() {
+            if (!GOOGLE_SHEET_WEB_APP_URL) return;
 
             const indicator = document.getElementById('sync-indicator');
             if (indicator) {
@@ -1771,43 +1650,32 @@
                 if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                 const json = await res.json();
 
-                // Pastikan tidak ada mutasi baru yang terjadi selama proses fetch berlangsung
-                if (silent && (isMutating || (Date.now() - lastMutationTime < 5000))) {
-                    return;
-                }
-
                 if (json.status === 'success' && json.data) {
                     db = {
                         balita: (json.data.balita || []).map(item => ({
                             ...item,
+                            id: String(item.id || ('MBG-' + Math.random().toString(36).slice(2))),
                             nikBalita: cleanNik(item.nikBalita),
                             nikIbu: cleanNik(item.nikIbu)
                         })),
                         bumil: (json.data.bumil || []).map(item => ({
                             ...item,
+                            id: String(item.id || ('MBG-' + Math.random().toString(36).slice(2))),
                             nikIbuHamil: cleanNik(item.nikIbuHamil)
                         })),
                         busui: (json.data.busui || []).map(item => ({
                             ...item,
+                            id: String(item.id || ('MBG-' + Math.random().toString(36).slice(2))),
                             nikIbuMenyusui: cleanNik(item.nikIbuMenyusui),
                             nikAnak: cleanNik(item.nikAnak)
                         }))
                     };
-                    if (json.locks) {
-                        activeLocks = json.locks;
-                    }
                     saveDatabase();
                     renderTable();
                     renderPublicSummary();
-                    if (!silent) {
-                        showToast('Data berhasil disinkronkan dari Google Sheet!', 'success');
-                    }
                 }
             } catch (err) {
-                console.error('Sinkronisasi otomatis Google Sheet:', err);
-                if (!silent) {
-                    showToast('Gagal menarik data dari Google Sheet.', 'error');
-                }
+                console.error('Gagal memuat data awal dari Google Sheet:', err);
             } finally {
                 if (indicator) {
                     indicator.classList.add('hidden');
