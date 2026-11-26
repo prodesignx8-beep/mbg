@@ -1,1739 +1,992 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Pendataan Penerima MBG - Makan Bergizi Gratis</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- jsPDF & jsPDF AutoTable -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f7ff;
-            -webkit-tap-highlight-color: transparent;
-        }
-        /* Custom scrollbar untuk tabel horizontal di HP */
-        .table-scroll::-webkit-scrollbar {
-            height: 8px;
-        }
-        .table-scroll::-webkit-scrollbar-track {
-            background: #e2e8f0;
-            border-radius: 8px;
-        }
-        .table-scroll::-webkit-scrollbar-thumb {
-            background: #0284c7;
-            border-radius: 8px;
-        }
-        .table-scroll::-webkit-scrollbar-thumb:hover {
-            background: #0369a1;
-        }
-        @keyframes slideIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-toast {
-            animation: slideIn 0.3s ease-out forwards;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Penerima Makan Bergizi Gratis (MBG)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+  </style>
 </head>
-<body class="text-slate-800 min-h-screen flex flex-col">
-
-    <!-- ==================== HALAMAN VIEWER PUBLIK (DEFAULT JIKA BELUM LOGIN ADMIN) ==================== -->
-    <div id="public-viewer" class="min-h-screen flex flex-col bg-slate-50">
-        <!-- Header Viewer Publik -->
-        <header class="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 text-white shadow-lg sticky top-0 z-30">
-            <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 bg-amber-300 text-slate-900 rounded-2xl flex items-center justify-center shadow-md shrink-0">
-                        <i data-lucide="utensils" class="w-6 h-6 stroke-[2.5]"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-extrabold text-sm sm:text-lg leading-tight tracking-tight">DASHBOARD PENERIMA MBG</h1>
-                        <p class="text-xs text-sky-100">Pos 5 Bakalankrapyak &bull; Program Makan Bergizi Gratis</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button onclick="openLoginModal()" 
-                        class="px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-extrabold rounded-xl shadow-md transition flex items-center gap-2 text-xs sm:text-sm">
-                        <i data-lucide="shield-check" class="w-4 h-4"></i>
-                        <span>Login Admin</span>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Konten Utama Viewer Publik -->
-        <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-8 space-y-6">
-            <!-- Hero Banner Ringkasan Global -->
-            <div class="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div class="space-y-2 max-w-xl">
-                        <span class="inline-flex items-center gap-1.5 bg-amber-300 text-slate-900 text-xs font-extrabold px-3 py-1 rounded-full">
-                            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                            DATA GLOBAL REAL-TIME
-                        </span>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Rekapitulasi Penerima Manfaat MBG</h2>
-                        <p class="text-sky-100 text-xs sm:text-sm leading-relaxed">
-                            Informasi terbuka jumlah sasaran penerima Program Makan Bergizi Gratis (MBG) Pos 5 Bakalankrapyak berdasarkan kategori kelompok sasaran.
-                        </p>
-                    </div>
-
-                    <!-- Kartu Total Global Keseluruhan -->
-                    <div class="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl p-5 sm:p-6 min-w-[220px] text-center md:text-right shadow-inner">
-                        <p class="text-xs font-bold uppercase tracking-wider text-sky-100">Total Seluruh Penerima</p>
-                        <div class="mt-1 flex items-baseline justify-center md:justify-end gap-2">
-                            <span id="public-total-all" class="text-4xl sm:text-5xl font-extrabold text-amber-300">0</span>
-                            <span class="text-sm font-semibold text-white">Jiwa</span>
-                        </div>
-                        <p id="public-last-updated" class="text-[11px] text-sky-200 mt-2">Terhubung langsung ke Google Sheets</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3 Kartu Statistik Kategori -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-                <!-- Kartu Balita -->
-                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-sky-100 hover:shadow-md transition">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="w-12 h-12 bg-sky-100 text-sky-600 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="baby" class="w-6 h-6"></i>
-                        </div>
-                        <span id="public-pct-balita" class="text-xs font-extrabold bg-sky-50 text-sky-700 px-3 py-1 rounded-full">0%</span>
-                    </div>
-                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wide">Kategori Balita</h3>
-                    <div class="mt-1 flex items-baseline gap-2">
-                        <span id="public-count-balita" class="text-3xl font-extrabold text-slate-900">0</span>
-                        <span class="text-xs font-semibold text-slate-500">Anak</span>
-                    </div>
-                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                        <span>Laki-laki: <strong id="public-balita-l" class="text-sky-700">0</strong></span>
-                        <span>Perempuan: <strong id="public-balita-p" class="text-pink-600">0</strong></span>
-                    </div>
-                </div>
-
-                <!-- Kartu Ibu Hamil -->
-                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-rose-100 hover:shadow-md transition">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="heart-pulse" class="w-6 h-6"></i>
-                        </div>
-                        <span id="public-pct-bumil" class="text-xs font-extrabold bg-rose-50 text-rose-700 px-3 py-1 rounded-full">0%</span>
-                    </div>
-                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wide">Kategori Ibu Hamil</h3>
-                    <div class="mt-1 flex items-baseline gap-2">
-                        <span id="public-count-bumil" class="text-3xl font-extrabold text-slate-900">0</span>
-                        <span class="text-xs font-semibold text-slate-500">Ibu</span>
-                    </div>
-                    <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                        Sasaran ibu hamil terdata aktif
-                    </div>
-                </div>
-
-                <!-- Kartu Ibu Menyusui -->
-                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-amber-100 hover:shadow-md transition">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="smile" class="w-6 h-6"></i>
-                        </div>
-                        <span id="public-pct-busui" class="text-xs font-extrabold bg-amber-50 text-amber-800 px-3 py-1 rounded-full">0%</span>
-                    </div>
-                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wide">Kategori Ibu Menyusui</h3>
-                    <div class="mt-1 flex items-baseline gap-2">
-                        <span id="public-count-busui" class="text-3xl font-extrabold text-slate-900">0</span>
-                        <span class="text-xs font-semibold text-slate-500">Ibu</span>
-                    </div>
-                    <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                        Sasaran ibu menyusui terdata aktif
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabel Ringkasan Proporsi Penerima Manfaat -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-                <div class="px-5 py-4 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
-                    <h3 class="font-extrabold text-slate-800 text-sm sm:text-base flex items-center gap-2">
-                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-sky-600"></i>
-                        <span>Rincian Distribusi Penerima Manfaat</span>
-                    </h3>
-                    <span class="text-xs text-slate-500 font-medium">Mode Viewer Publik</span>
-                </div>
-                <div class="p-5 space-y-4">
-                    <div>
-                        <div class="flex justify-between text-xs sm:text-sm font-bold mb-1.5">
-                            <span class="text-slate-700">1. Balita</span>
-                            <span id="bar-label-balita" class="text-sky-700">0 Orang (0%)</span>
-                        </div>
-                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div id="bar-fill-balita" class="h-full bg-sky-500 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-xs sm:text-sm font-bold mb-1.5">
-                            <span class="text-slate-700">2. Ibu Hamil</span>
-                            <span id="bar-label-bumil" class="text-rose-600">0 Orang (0%)</span>
-                        </div>
-                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div id="bar-fill-bumil" class="h-full bg-rose-500 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-xs sm:text-sm font-bold mb-1.5">
-                            <span class="text-slate-700">3. Ibu Menyusui</span>
-                            <span id="bar-label-busui" class="text-amber-600">0 Orang (0%)</span>
-                        </div>
-                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div id="bar-fill-busui" class="h-full bg-amber-400 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Menu Pencarian Penerima Manfaat (Lintas Kategori) -->
-            <div class="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
-                <div class="px-5 py-4 bg-sky-50/80 border-b border-sky-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h3 class="font-extrabold text-slate-800 text-sm sm:text-base flex items-center gap-2">
-                            <i data-lucide="search" class="w-5 h-5 text-sky-600"></i>
-                            <span>Cek & Pencarian Data Penerima Manfaat</span>
-                        </h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Cari berdasarkan Nama Balita, Nama Ibu, atau NIK di seluruh kategori.</p>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5" id="public-filter-pills">
-                        <button type="button" onclick="setPublicSearchCategory('all')" data-cat="all"
-                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white shadow-xs transition">
-                            Semua
-                        </button>
-                        <button type="button" onclick="setPublicSearchCategory('balita')" data-cat="balita"
-                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
-                            Balita
-                        </button>
-                        <button type="button" onclick="setPublicSearchCategory('bumil')" data-cat="bumil"
-                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
-                            Ibu Hamil
-                        </button>
-                        <button type="button" onclick="setPublicSearchCategory('busui')" data-cat="busui"
-                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
-                            Ibu Menyusui
-                        </button>
-                    </div>
-                </div>
-
-                <div class="p-4 sm:p-5 space-y-4">
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
-                            <i data-lucide="search" class="w-5 h-5"></i>
-                        </span>
-                        <input type="text" id="public-search-input" oninput="renderPublicSearchResults()"
-                            placeholder="Ketik nama penerima manfaat atau NIK untuk mengecek status..."
-                            class="w-full pl-12 pr-24 py-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition">
-                        <button type="button" id="public-search-clear" onclick="clearPublicSearch()"
-                            class="hidden absolute inset-y-2 right-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition">
-                            Hapus
-                        </button>
-                    </div>
-
-                    <div id="public-search-results" class="space-y-2.5">
-                        <!-- Hasil pencarian publik dirender otomatis di sini -->
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <footer class="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-500">
-            Dashboard Informasi Publik Penerima MBG Pos 5 Bakalankrapyak &bull; Untuk pengelolaan data rinci silakan masuk melalui <strong>Login Admin</strong>.
-        </footer>
-    </div>
-
-    <!-- ==================== MODAL LOGIN ADMIN (MUNCUL SAAT KLIK LOGIN ADMIN) ==================== -->
-    <div id="login-screen" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-sky-100 animate-toast my-auto">
-            <div class="bg-sky-500 p-6 text-center relative overflow-hidden">
-                <button type="button" onclick="closeLoginModal()" aria-label="Tutup Login"
-                    class="absolute top-4 right-4 p-2 bg-sky-600/70 hover:bg-sky-700 text-white rounded-xl transition">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-                <div class="w-16 h-16 bg-amber-300 text-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md transform -rotate-3">
-                    <i data-lucide="utensils" class="w-8 h-8 stroke-[2.5]"></i>
-                </div>
-                <h1 class="text-2xl font-extrabold text-white tracking-tight">LOGIN PETUGAS MBG</h1>
-                <p class="text-sky-100 text-sm mt-1">Masuk untuk mengelola data penerima manfaat</p>
-            </div>
-            
-            <form id="login-form" class="p-6 sm:p-8 space-y-5">
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Username Petugas</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                            <i data-lucide="user" class="w-5 h-5"></i>
-                        </span>
-                        <input type="text" id="login-username" required autocomplete="off"
-                            placeholder="Ketik ADMIN1 atau ADMIN2"
-                            oninput="this.value = this.value.toUpperCase()"
-                            class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none font-semibold uppercase transition">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Kode Keamanan / Password</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                            <i data-lucide="lock" class="w-5 h-5"></i>
-                        </span>
-                        <input type="password" id="login-password" required inputmode="numeric"
-                            placeholder="Masukkan kode keamanan"
-                            class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none font-semibold transition">
-                    </div>
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-2.5 pt-1">
-                    <button type="button" onclick="closeLoginModal()"
-                        class="w-full sm:w-1/3 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition text-sm">
-                        Batal
-                    </button>
-                    <button type="submit" 
-                        class="w-full sm:w-2/3 py-3.5 px-4 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-bold rounded-xl shadow-lg shadow-amber-200 transition flex items-center justify-center gap-2 text-sm sm:text-base">
-                        <i data-lucide="log-in" class="w-5 h-5"></i>
-                        <span>MASUK KE SISTEM</span>
-                    </button>
-                </div>
-            </form>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+  <!-- Top Bar -->
+  <header class="bg-blue-600 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+          <i data-lucide="utensils" class="w-4 h-4 text-slate-900"></i>
         </div>
-    </div>
-
-    <!-- ==================== DASHBOARD UTAMA ==================== -->
-    <div id="main-app" class="hidden flex-1 flex flex-col">
-        
-        <!-- Header / Navbar -->
-        <header class="bg-sky-600 text-white shadow-md sticky top-0 z-30">
-            <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-                <div class="flex items-center gap-3">
-                    <div class="bg-amber-300 text-slate-900 p-2 rounded-xl shadow-sm">
-                        <i data-lucide="heart-handshake" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-extrabold text-base sm:text-lg leading-tight">PENERIMA MBG POS 5 BAKALANKRAPYAK</h1>
-                        <p class="text-xs text-sky-100 hidden sm:block">Sistem Pendataan Terpadu & Sinkronisasi Sheet</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <!-- Indikator Status Pengiriman ke Google Sheet -->
-                    <div id="sync-indicator" class="hidden items-center gap-1.5 bg-sky-700/80 text-sky-100 px-3 py-1.5 rounded-xl text-xs font-medium">
-                        <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-amber-300"></i>
-                        <span>Menyimpan ke Sheet...</span>
-                    </div>
-
-                    <!-- Tombol Logout -->
-                    <button onclick="handleLogout()" 
-                        class="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-3 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
-                        <span>Keluar</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Baris Info Petugas Aktif -->
-            <div class="bg-sky-800/70 border-t border-sky-500/30 px-4 py-1.5">
-                <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs text-sky-100">
-                    <div class="flex items-center gap-2">
-                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span>Petugas Aktif: <strong id="active-admin-badge" class="text-amber-300">-</strong></span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sky-200/90 hidden sm:inline">Terhubung Otomatis ke Google Sheets</span>
-                        <button type="button" onclick="loadFromGoogleSheetOnce(true)"
-                            class="px-2.5 py-1 bg-sky-700 hover:bg-sky-600 text-amber-300 font-bold rounded-lg text-[11px] flex items-center gap-1 transition">
-                            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                            <span>Muat Ulang Sheet</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Navigasi 3 Tab Menu Utama (Mudah dijangkau jempol di HP) -->
-            <nav class="bg-sky-700/70 backdrop-blur-sm border-t border-sky-500/40">
-                <div class="max-w-7xl mx-auto px-2 sm:px-4 grid grid-cols-3 gap-1.5 py-2">
-                    <button onclick="switchTab('balita')" id="tab-btn-balita"
-                        class="tab-btn flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition bg-amber-300 text-slate-900 shadow">
-                        <i data-lucide="baby" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                        <span class="text-center leading-tight">1. BALITA</span>
-                    </button>
-                    <button onclick="switchTab('bumil')" id="tab-btn-bumil"
-                        class="tab-btn flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition text-sky-100 hover:bg-sky-600">
-                        <i data-lucide="heart-pulse" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                        <span class="text-center leading-tight">2. IBU HAMIL</span>
-                    </button>
-                    <button onclick="switchTab('busui')" id="tab-btn-busui"
-                        class="tab-btn flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition text-sky-100 hover:bg-sky-600">
-                        <i data-lucide="smile" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                        <span class="text-center leading-tight">3. IBU MENYUSUI</span>
-                    </button>
-                </div>
-            </nav>
-        </header>
-
-        <!-- Konten Utama -->
-        <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-5 space-y-6">
-            
-            <!-- Banner Judul Kategori & Statistik -->
-            <div class="bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <span class="inline-block bg-amber-300 text-slate-900 text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-1">KATEGORI AKTIF</span>
-                    <h2 id="category-title" class="text-lg sm:text-2xl font-extrabold tracking-tight">PENDATAAN BALITA PENERIMA MBG</h2>
-                    <p id="category-subtitle" class="text-sky-100 text-xs sm:text-sm mt-0.5">Kelola data sasaran balita secara akurat dan terintegrasi.</p>
-                </div>
-                <div class="bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 flex items-center gap-3 self-start sm:self-auto">
-                    <div class="p-2 bg-amber-300 text-slate-900 rounded-lg">
-                        <i data-lucide="users" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-sky-100">Total Terdata</p>
-                        <p id="total-count" class="text-xl font-extrabold leading-none">0 <span class="text-xs font-normal">Orang</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== FORM INPUT DATA ==================== -->
-            <section class="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
-                <div class="bg-amber-300/90 px-4 sm:px-6 py-3 border-b border-amber-400/50 flex items-center justify-between">
-                    <h3 id="form-heading" class="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                        <i data-lucide="plus-circle" class="w-5 h-5 text-sky-700"></i>
-                        <span>TAMBAH DATA BARU</span>
-                    </h3>
-                    <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden text-xs font-bold bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition">
-                        Batal Edit
-                    </button>
-                </div>
-
-                <form id="data-form" class="p-4 sm:p-6">
-                    <input type="hidden" id="edit-id" value="">
-                    <!-- Container Field Dinamis -->
-                    <div id="dynamic-fields" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Diisi otomatis via JavaScript -->
-                    </div>
-
-                    <!-- Peringatan Validasi Khusus (Misal HPHT > 11 bulan) -->
-                    <div id="validation-warning" class="hidden mt-4 p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-r-xl text-xs sm:text-sm flex items-start gap-2.5">
-                        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
-                        <div id="validation-warning-text"></div>
-                    </div>
-
-                    <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
-                        <button type="button" onclick="resetForm()" 
-                            class="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition text-sm">
-                            Reset Form
-                        </button>
-                        <button type="submit" id="submit-btn"
-                            class="w-full sm:w-auto px-6 py-3 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold rounded-xl shadow-md shadow-sky-200 transition flex items-center justify-center gap-2 text-sm">
-                            <i data-lucide="save" class="w-4 h-4"></i>
-                            <span>SIMPAN DATA</span>
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            <!-- ==================== TABEL DATA & TOOLBAR ==================== -->
-            <section class="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
-                <!-- Toolbar Pencarian & Export PDF -->
-                <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/70">
-                    <!-- Pencarian -->
-                    <div class="relative flex-1 max-w-md">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                            <i data-lucide="search" class="w-4 h-4"></i>
-                        </span>
-                        <input type="text" id="search-input" oninput="renderTable()"
-                            placeholder="Cari berdasarkan Nama atau NIK..."
-                            class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
-                    </div>
-
-                    <!-- Tombol Export PDF -->
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="exportToPDF()" 
-                            class="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5">
-                            <i data-lucide="file-down" class="w-4 h-4"></i>
-                            <span>Export PDF</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tabel Responsif dengan Scroll Horizontal Mulus -->
-                <div class="overflow-x-auto table-scroll">
-                    <table class="w-full text-left border-collapse min-w-[850px]">
-                        <thead>
-                            <!-- Baris Judul Tabel -->
-                            <tr class="bg-sky-500 text-white">
-                                <th id="table-banner-title" colspan="10" class="py-3 px-4 text-center font-extrabold text-sm sm:text-base tracking-wide border-b border-sky-600">
-                                    PENDATAAN BALITA PENERIMA MBG
-                                </th>
-                            </tr>
-                            <!-- Baris Header Kolom Kuning Cerah -->
-                            <tr id="table-headers" class="bg-amber-300 text-slate-900 font-extrabold text-xs uppercase border-b-2 border-slate-300">
-                                <!-- Diisi dinamis -->
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="divide-y divide-slate-200 text-sm">
-                            <!-- Diisi dinamis -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Empty State -->
-                <div id="empty-state" class="hidden py-12 px-4 text-center">
-                    <div class="w-16 h-16 bg-sky-50 text-sky-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i data-lucide="folder-open" class="w-8 h-8"></i>
-                    </div>
-                    <h4 class="font-bold text-slate-700">Belum Ada Data Tersimpan</h4>
-                    <p class="text-xs sm:text-sm text-slate-500 mt-1">Silakan isi formulir di atas untuk menambahkan data penerima MBG.</p>
-                </div>
-            </section>
-        </main>
-
-        <footer class="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-500">
-            Sistem Pendataan Penerima MBG (Makan Bergizi Gratis) &bull; Tersimpan Otomatis di Perangkat & Google Sheets
-        </footer>
-    </div>
-
-    <!-- ==================== MODAL KONFIRMASI HAPUS ==================== -->
-    <div id="delete-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-toast p-5 text-center">
-            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                <i data-lucide="trash-2" class="w-6 h-6"></i>
-            </div>
-            <h3 class="font-extrabold text-slate-900 text-base">Hapus Data Ini?</h3>
-            <p class="text-xs sm:text-sm text-slate-500 mt-1">Data yang dihapus akan hilang dari perangkat dan Google Sheets.</p>
-            <div class="mt-5 flex items-center justify-center gap-2.5">
-                <button onclick="closeDeleteModal()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm">
-                    Batal
-                </button>
-                <button id="confirm-delete-btn" class="py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm shadow">
-                    Ya, Hapus
-                </button>
-            </div>
+        <div class="flex flex-col">
+          <span class="font-bold text-white text-sm sm:text-base tracking-wide whitespace-nowrap truncate leading-tight">
+            DASHBOARD PENERIMA MBG
+          </span>
+          <span class="text-[10px] sm:text-xs text-blue-100 whitespace-nowrap truncate leading-tight">
+            Pos 5 Bakalankrapyak • Program Makan Bergizi Gratis
+          </span>
         </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btn-login-open" onclick="openLoginModal()" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-lg bg-amber-400 text-slate-900 hover:bg-amber-500 transition-colors whitespace-nowrap shadow-sm">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>Login Admin</span>
+        </button>
+        <button id="btn-logout" onclick="logoutAdmin()" class="hidden inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-lg bg-white/10 text-white hover:bg-white/20 border border-white/20 transition-colors whitespace-nowrap">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <span>Keluar Admin</span>
+        </button>
+      </div>
     </div>
+  </header>
 
-    <!-- ==================== MODAL EDIT DATA (RAMAH LAYAR HP) ==================== -->
-    <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-auto animate-toast border border-amber-200">
-            <div class="bg-amber-400 px-5 py-4 text-slate-900 flex items-center justify-between">
-                <h3 class="font-extrabold text-base sm:text-lg flex items-center gap-2">
-                    <i data-lucide="edit-3" class="w-5 h-5"></i>
-                    <span id="edit-modal-title">EDIT DATA PENERIMA</span>
-                </h3>
-                <button type="button" onclick="closeEditModal()" class="p-1.5 bg-amber-500/40 hover:bg-amber-500/70 rounded-xl transition">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
+  <!-- Toast Container -->
+  <div id="toast-box" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
 
-            <form id="edit-modal-form" class="p-4 sm:p-6 max-h-[80vh] overflow-y-auto">
-                <input type="hidden" id="modal-edit-id" value="">
-                <div id="modal-dynamic-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Field edit dirender dinamis di sini -->
-                </div>
-
-                <!-- Peringatan Validasi HPHT di Modal Edit -->
-                <div id="modal-validation-warning" class="hidden mt-4 p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 rounded-r-xl text-xs sm:text-sm flex items-start gap-2.5">
-                    <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
-                    <div id="modal-validation-warning-text"></div>
-                </div>
-
-                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
-                    <button type="button" onclick="closeEditModal()" 
-                        class="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">
-                        Batal
-                    </button>
-                    <button type="submit" id="modal-save-btn"
-                        class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-md shadow-emerald-200 text-sm transition flex items-center justify-center gap-2">
-                        <i data-lucide="check-circle" class="w-4 h-4"></i>
-                        <span>SIMPAN PERUBAHAN</span>
-                    </button>
-                </div>
-            </form>
+  <!-- PUBLIC DASHBOARD -->
+  <main id="public-view" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+    
+    <!-- Hero Banner -->
+    <section class="bg-gradient-to-r from-[#00b4db] to-[#0083b0] rounded-2xl p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-8 shadow-md">
+      <div class="space-y-4 max-w-2xl text-white">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-slate-900 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></div>
+          DATA REAL-TIME
         </div>
+        <h1 class="text-2xl sm:text-4xl font-bold tracking-tight pb-1">
+          Rekapitulasi Penerima Manfaat MBG
+        </h1>
+        <p class="text-sm sm:text-base text-blue-50 leading-relaxed max-w-xl">
+          Informasi terbuka jumlah sasaran penerima Program Makan Bergizi Gratis (MBG) Pos 5 Bakalankrapyak berdasarkan kategori kelompok sasaran.
+        </p>
+      </div>
+      
+      <div class="bg-white/10 border border-white/20 rounded-xl p-6 text-center w-full lg:w-auto min-w-[240px] backdrop-blur-sm shrink-0">
+        <p class="text-xs font-bold text-blue-100 uppercase tracking-widest mb-2">Total Seluruh Penerima</p>
+        <div class="flex items-baseline justify-center gap-2">
+          <p id="stat-total-banner" class="text-5xl sm:text-6xl font-extrabold text-amber-400 tabular-nums drop-shadow-md">0</p>
+          <span class="text-lg font-bold text-white">Jiwa</span>
+        </div>
+        <p id="update-time" class="text-[10px] sm:text-xs text-blue-200 mt-3 font-medium"></p>
+      </div>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- Card Balita -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col h-full">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+            <i data-lucide="baby" class="w-5 h-5 text-blue-500"></i>
+          </div>
+          <div id="pct-balita" class="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold tabular-nums">0%</div>
+        </div>
+        <div class="mb-4">
+          <p class="text-xs font-bold text-slate-500 mb-1">KATEGORI BALITA</p>
+          <div class="flex items-baseline gap-1.5">
+            <p id="stat-balita" class="text-4xl font-extrabold text-slate-900 tabular-nums">0</p>
+            <span class="text-sm font-medium text-slate-500">Anak</span>
+          </div>
+        </div>
+        <div class="mt-auto">
+          <hr class="border-slate-100 my-3">
+          <div id="balita-gender-split" class="text-xs text-slate-500 flex justify-between">
+            <!-- Diisi JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Bumil -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col h-full">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+            <i data-lucide="heart" class="w-5 h-5 text-rose-500"></i>
+          </div>
+          <div id="pct-bumil" class="px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 text-xs font-bold tabular-nums">0%</div>
+        </div>
+        <div class="mb-4">
+          <p class="text-xs font-bold text-slate-500 mb-1">KATEGORI IBU HAMIL</p>
+          <div class="flex items-baseline gap-1.5">
+            <p id="stat-bumil" class="text-4xl font-extrabold text-slate-900 tabular-nums">0</p>
+            <span class="text-sm font-medium text-slate-500">Ibu</span>
+          </div>
+        </div>
+        <div class="mt-auto">
+          <hr class="border-slate-100 my-3">
+          <p class="text-xs text-slate-500">Sasaran ibu hamil terdata aktif</p>
+        </div>
+      </div>
+
+      <!-- Card Busui -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col h-full">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+            <i data-lucide="smile" class="w-5 h-5 text-amber-600"></i>
+          </div>
+          <div id="pct-busui" class="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-bold tabular-nums">0%</div>
+        </div>
+        <div class="mb-4">
+          <p class="text-xs font-bold text-slate-500 mb-1">KATEGORI IBU MENYUSUI</p>
+          <div class="flex items-baseline gap-1.5">
+            <p id="stat-busui" class="text-4xl font-extrabold text-slate-900 tabular-nums">0</p>
+            <span class="text-sm font-medium text-slate-500">Ibu</span>
+          </div>
+        </div>
+        <div class="mt-auto">
+          <hr class="border-slate-100 my-3">
+          <p class="text-xs text-slate-500">Sasaran ibu menyusui terdata aktif</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Static Bar Chart Section -->
+    <section class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4 mb-5">
+        <div class="flex items-center gap-2">
+          <i data-lucide="bar-chart-2" class="w-5 h-5 text-slate-700"></i>
+          <h2 class="text-base font-bold text-slate-900">Rincian Distribusi Penerima Manfaat</h2>
+        </div>
+        <span id="public-source-info" class="text-xs font-medium text-slate-500">Mode Viewer Publik</span>
+      </div>
+      <div id="public-bar-chart" class="space-y-6">
+        <!-- Diisi JS -->
+      </div>
+    </section>
+
+    <!-- Viewer Data Table -->
+    <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-slate-900">Daftar Data Penerima (Mode Viewer)</h2>
+          <p class="text-xs text-slate-500">Tampilan baca data penerima terverifikasi per kategori</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+            <button onclick="switchViewerTab('balita')" id="vtab-balita" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-blue-700 shadow-sm whitespace-nowrap transition-colors">Balita</button>
+            <button onclick="switchViewerTab('ibuHamil')" id="vtab-ibuHamil" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors">Ibu Hamil</button>
+            <button onclick="switchViewerTab('ibuMenyusui')" id="vtab-ibuMenyusui" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors">Ibu Menyusui</button>
+          </div>
+          <div class="relative flex-1 sm:flex-initial">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="viewer-search-input" type="text" oninput="renderViewerTable()" placeholder="Cari Nama atau NIK..." class="w-full sm:w-64 pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead id="viewer-table-head" class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600"></thead>
+          <tbody id="viewer-table-body" class="divide-y divide-slate-200 text-xs text-slate-800"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ADMIN DASHBOARD -->
+  <main id="admin-view" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <!-- Top Admin Summary & Endpoint Bar -->
+    <section class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-lg font-bold text-slate-900">Dashboard Admin Pendataan MBG</h1>
+        <p id="admin-mode-desc" class="text-xs text-slate-500">Mode Sandbox Lokal aktif (data tersimpan di browser)</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full sm:w-80 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button onclick="saveGasEndpoint()" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-colors whitespace-nowrap shadow-sm">
+          Simpan URL GAS
+        </button>
+        <button onclick="loadAllData()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span>Muat Ulang</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Category Tabs & Actions -->
+    <section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-lg self-start">
+          <button onclick="switchTab('balita')" id="tab-balita" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap">Balita</button>
+          <button onclick="switchTab('ibuHamil')" id="tab-ibuHamil" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap">Ibu Hamil</button>
+          <button onclick="switchTab('ibuMenyusui')" id="tab-ibuMenyusui" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap">Ibu Menyusui</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative flex-1 sm:flex-initial">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="search-input" type="text" oninput="renderTable()" placeholder="Cari Nama atau NIK..." class="w-full sm:w-64 pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <button onclick="exportActivePdf()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap">
+            <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
+            <span>Export PDF</span>
+          </button>
+          <button onclick="openFormModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-colors whitespace-nowrap shadow-sm">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Tambah Data</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead id="table-head" class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600"></thead>
+          <tbody id="table-body" class="divide-y divide-slate-200 text-xs text-slate-800"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- LOGIN MODAL -->
+  <div id="login-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-xl w-full max-w-sm p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Login Admin MBG</h3>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <form onsubmit="handleLogin(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Username</label>
+          <input id="login-user" type="text" required placeholder="User ID" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">Password</label>
+          <input id="login-pass" type="password" required placeholder="•••" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <p id="login-error" class="hidden text-xs text-red-600 font-medium"></p>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeLoginModal()" class="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Batal</button>
+          <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-sm">Masuk</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- ==================== TOAST NOTIFICATION ==================== -->
-    <div id="toast-container" class="fixed bottom-5 right-5 left-5 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <!-- CRUD FORM MODAL -->
+  <div id="form-modal" class="hidden fixed inset-0 z-40 bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-xl w-full max-w-xl p-6 space-y-4 my-8 shadow-xl">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="form-modal-title" class="text-base font-bold text-slate-900">Tambah Data</h3>
+        <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="autofill-banner" class="hidden bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-2.5 text-xs"></div>
+      <div id="hpht-warning-banner" class="hidden bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-3 text-xs flex items-start gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+        <span id="hpht-warning-text"></span>
+      </div>
+      
+      <form id="record-form" onsubmit="handleFormSubmit(event)" class="space-y-3"></form>
+    </div>
+  </div>
 
-    <!-- ==================== JAVASCRIPT LOGIKA APLIKASI ==================== -->
-    <script>
-        // =========================================================================
-        // KONFIGURASI GOOGLE APPS SCRIPT & PENYIMPANAN LOKAL
-        // =========================================================================
-        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyT_v_HbvtfoJHng_0dqBpxOZAsBkmP4nkckaRWKdwkNxJXuEinEw6D-N59sL7dn0xw/exec';
+  <!-- DUPLICATE WARNING MODAL (POP UP PERTANYAAN) -->
+  <div id="duplicate-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-xl space-y-4 transform transition-all">
+      <div class="flex flex-col items-center text-center space-y-3">
+        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">Peringatan Duplikasi Data</h3>
+        <p id="duplicate-modal-text" class="text-sm text-slate-600 leading-relaxed"></p>
+        <p class="text-sm font-semibold text-slate-800 mt-2">Apakah Anda yakin tetap ingin menyimpan data yang sama persis ini?</p>
+      </div>
+      <div class="pt-4 flex justify-center gap-3">
+        <button type="button" onclick="cancelDuplicateSave()" class="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors">
+          Batal Simpan
+        </button>
+        <button type="button" onclick="confirmDuplicateSave()" class="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors shadow-sm">
+          Tetap Simpan
+        </button>
+      </div>
+    </div>
+  </div>
 
-        const STORAGE_KEYS = {
-            AUTH: 'mbg_auth_logged_in',
-            DATA: 'mbg_database_pos5'
-        };
+  <datalist id="mother-names-list"></datalist>
+  <datalist id="child-names-list"></datalist>
 
-        // Konfigurasi Akun Admin
-        const ADMIN_ACCOUNTS = {
-            'ADMIN1': '3131',
-            'ADMIN2': '173',
-            'ADMIN': '173'
-        };
+  <script>
+    const INITIAL_DATA = {
+      balita: [
+        { id: 'MBG-BLT001', namaBalita: 'Arka Pratama', tglLahirBalita: '2024-03-14', gender: 'L', nikBalita: '3273011403240001', namaIbu: 'Siti Aminah', nikIbu: '3273015208940003' },
+        { id: 'MBG-BLT002', namaBalita: 'Nayla Putri', tglLahirBalita: '2023-11-02', gender: 'P', nikBalita: '3273014211230002', namaIbu: 'Dewi Lestari', nikIbu: '3273016405920007' }
+      ],
+      ibuHamil: [
+        { id: 'MBG-IHM001', namaIbuHamil: 'Ratna Sari', tglLahirIbuHamil: '1995-04-12', gender: 'P', nikIbuHamil: '3273015204950002', hpht: '2026-06-15' }
+      ],
+      ibuMenyusui: [
+        { id: 'MBG-IMS001', namaIbuMenyusui: 'Siti Aminah', tglLahirIbu: '1994-08-12', gender: 'P', nikIbu: '3273015208940003', namaAnak: 'Arka Pratama', nikAnak: '3273011403240001', tglLahirAnak: '2024-03-14' }
+      ]
+    };
 
-        let currentTab = 'balita'; // 'balita' | 'bumil' | 'busui'
-        let publicSearchCategory = 'all'; // 'all' | 'balita' | 'bumil' | 'busui'
-        let deleteTargetId = null;
-        let currentAdminUser = localStorage.getItem('mbg_active_admin') || 'ADMIN1';
+    const LS_URL = 'mbg_gas_endpoint_url';
+    const LS_DATA = 'mbg_sandbox_dataset_v1';
+    let gasUrl = localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycbzScvVZH9l2UhjC5ku51vHrdrmNGQQsJORyd-P_iyBFGWvzFGfhPIeazCw1hH-OVn7stQ/exec';
+    let activeTab = 'balita';
+    let viewerTab = 'balita';
+    let editingId = null;
+    let pendingDuplicateRecord = null;
+    let dataset = { balita: [], ibuHamil: [], ibuMenyusui: [] };
 
-        let db = {
-            balita: [],
-            bumil: [],
-            busui: []
-        };
+    function showToast(text, type = 'info') {
+      const box = document.getElementById('toast-box');
+      const el = document.createElement('div');
+      const palette = type === 'error' ? 'bg-red-600 text-white' : type === 'success' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-slate-800 text-white';
+      el.className = palette + ' px-4 py-2.5 rounded-lg text-xs font-medium shadow-md';
+      el.textContent = text;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
 
-        // Konfigurasi Struktur Setiap Tab
-        const TAB_CONFIG = {
-            balita: {
-                title: 'PENDATAAN BALITA PENERIMA MBG',
-                subtitle: 'Input dan kelola data penerima manfaat kategori Balita.',
-                sheetName: 'BALITA',
-                headers: ['NO', 'NAMA LENGKAP BALITA', 'TANGGAL LAHIR BALITA (DD/MM/YYYY)', 'GENDER (L/P)', 'NIK BALITA', 'NAMA IBU', 'NIK IBU', 'AKSI'],
-                pdfHeaders: ['NO', 'NAMA LENGKAP BALITA', 'TGL LAHIR BALITA', 'GENDER', 'NIK BALITA', 'NAMA IBU', 'NIK IBU'],
-                fields: [
-                    { name: 'namaBalita', label: 'Nama Lengkap Balita', type: 'text', placeholder: 'Contoh: Muhammad Al Fatih', required: true },
-                    { name: 'tglLahirBalita', label: 'Tanggal Lahir Balita', type: 'date', required: true },
-                    { name: 'gender', label: 'Gender (L / P)', type: 'select', options: ['L', 'P'], required: true },
-                    { name: 'nikBalita', label: 'NIK Balita (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Balita', required: true },
-                    { name: 'namaIbu', label: 'Nama Ibu', type: 'text', placeholder: 'Contoh: Siti Aminah', required: true },
-                    { name: 'nikIbu', label: 'NIK Ibu (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Ibu', required: true }
-                ]
-            },
-            bumil: {
-                title: 'PENDATAAN IBU HAMIL PENERIMA MBG',
-                subtitle: 'Input dan kelola data penerima manfaat kategori Ibu Hamil.',
-                sheetName: 'IBU_HAMIL',
-                headers: ['NO', 'NAMA LENGKAP IBU HAMIL', 'TANGGAL LAHIR IBU HAMIL (DD/MM/YYYY)', 'GENDER (P)', 'NIK IBU HAMIL', 'HPHT (DD/MM/YYYY)', 'AKSI'],
-                pdfHeaders: ['NO', 'NAMA LENGKAP IBU HAMIL', 'TGL LAHIR IBU HAMIL', 'GENDER', 'NIK IBU HAMIL', 'HPHT (DD/MM/YYYY)'],
-                fields: [
-                    { name: 'namaIbuHamil', label: 'Nama Lengkap Ibu Hamil', type: 'text', placeholder: 'Contoh: Rina Marlina', required: true },
-                    { name: 'tglLahirIbuHamil', label: 'Tanggal Lahir Ibu Hamil', type: 'date', required: true },
-                    { name: 'gender', label: 'Gender', type: 'readonly', value: 'P' },
-                    { name: 'nikIbuHamil', label: 'NIK Ibu Hamil (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK', required: true },
-                    { name: 'hpht', label: 'HPHT (Hari Pertama Haid Terakhir)', type: 'date', isHpht: true, required: true }
-                ]
-            },
-            busui: {
-                title: 'PENDATAAN IBU MENYUSUI PENERIMA MBG',
-                subtitle: 'Input dan kelola data penerima manfaat kategori Ibu Menyusui.',
-                sheetName: 'IBU_MENYUSUI',
-                headers: ['NO', 'NAMA LENGKAP IBU MENYUSUI', 'TANGGAL LAHIR IBU MENYUSUI (DD/MM/YYYY)', 'GENDER (P)', 'NIK IBU MENYUSUI', 'NAMA ANAK', 'NIK ANAK', 'TANGGAL LAHIR ANAK (DD/MM/YYYY)', 'AKSI'],
-                pdfHeaders: ['NO', 'NAMA IBU MENYUSUI', 'TGL LAHIR IBU', 'GENDER', 'NIK IBU', 'NAMA ANAK', 'NIK ANAK', 'TGL LAHIR ANAK'],
-                fields: [
-                    { name: 'namaIbuMenyusui', label: 'Nama Lengkap Ibu Menyusui', type: 'text', placeholder: 'Contoh: Dewi Lestari', required: true },
-                    { name: 'tglLahirIbuMenyusui', label: 'Tanggal Lahir Ibu Menyusui', type: 'date', required: true },
-                    { name: 'gender', label: 'Gender', type: 'readonly', value: 'P' },
-                    { name: 'nikIbuMenyusui', label: 'NIK Ibu Menyusui (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Ibu', required: true },
-                    { name: 'namaAnak', label: 'Nama Anak', type: 'text', placeholder: 'Contoh: Aisyah Putri', required: true },
-                    { name: 'nikAnak', label: 'NIK Anak (Maks 16 Digit)', type: 'nik', placeholder: '16 digit angka NIK Anak', required: true },
-                    { name: 'tglLahirAnak', label: 'Tanggal Lahir Anak', type: 'date', required: true }
-                ]
-            }
-        };
+    function sanitizeNik(val) {
+      return String(val || '').replace(/\D/g, '').slice(0, 16);
+    }
 
-        // --- INISIALISASI SAAT HALAMAN DIMUAT ---
-        window.addEventListener('DOMContentLoaded', () => {
+    function normName(val) {
+      return String(val || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function genId() {
+      return 'MBG-' + Date.now().toString(36).toUpperCase().slice(-5) + Math.random().toString(36).substring(2, 6).toUpperCase();
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, function(m) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
+      });
+    }
+
+    function buildCrossIndex() {
+      const mothers = {};
+      const children = {};
+      const put = (map, nama, nik, tgl, src) => {
+        const k = normName(nama);
+        if (!k) return;
+        if (!map[k]) map[k] = { nama: nama.trim(), nik: nik || '', tglLahir: tgl || '', source: src };
+        else {
+          if (!map[k].nik && nik) map[k].nik = nik;
+          if (!map[k].tglLahir && tgl) map[k].tglLahir = tgl;
+        }
+      };
+      dataset.ibuHamil.forEach(r => put(mothers, r.namaIbuHamil, r.nikIbuHamil, r.tglLahirIbuHamil, 'Ibu Hamil'));
+      dataset.ibuMenyusui.forEach(r => {
+        put(mothers, r.namaIbuMenyusui, r.nikIbu, r.tglLahirIbu, 'Ibu Menyusui');
+        put(children, r.namaAnak, r.nikAnak, r.tglLahirAnak, 'Ibu Menyusui');
+      });
+      dataset.balita.forEach(r => {
+        put(mothers, r.namaIbu, r.nikIbu, '', 'Balita');
+        put(children, r.namaBalita, r.nikBalita, r.tglLahirBalita, 'Balita');
+      });
+      return { mothers, children };
+    }
+
+    function refreshDatalists() {
+      const idx = buildCrossIndex();
+      document.getElementById('mother-names-list').innerHTML = Object.values(idx.mothers)
+        .map(m => '<option value="' + escapeHtml(m.nama) + '"></option>').join('');
+      document.getElementById('child-names-list').innerHTML = Object.values(idx.children)
+        .map(c => '<option value="' + escapeHtml(c.nama) + '"></option>').join('');
+    }
+
+    async function loadAllData() {
+      try {
+        if (!gasUrl.trim()) {
+          const raw = localStorage.getItem(LS_DATA);
+          dataset = raw ? JSON.parse(raw) : structuredClone(INITIAL_DATA);
+          if (!raw) localStorage.setItem(LS_DATA, JSON.stringify(dataset));
+        } else {
+          const res = await fetch(gasUrl.trim(), { method: 'GET', redirect: 'follow' });
+          const json = await res.json();
+          if (json.error) throw new Error(json.error);
+          dataset = {
+            balita: json.balita || [],
+            ibuHamil: json.ibuHamil || [],
+            ibuMenyusui: json.ibuMenyusui || []
+          };
+        }
+        renderPublic();
+        renderTable();
+        refreshDatalists();
+      } catch (err) {
+        showToast('Gagal memuat data: ' + err.message, 'error');
+      }
+    }
+
+    function renderPublic() {
+      const bList = dataset.balita || [];
+      const hList = dataset.ibuHamil || [];
+      const mList = dataset.ibuMenyusui || [];
+
+      const b = bList.length;
+      const h = hList.length;
+      const m = mList.length;
+      const total = b + h + m;
+      
+      // Banner Total
+      document.getElementById('stat-total-banner').textContent = total;
+      
+      // Update Time
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      document.getElementById('update-time').textContent = 'Diperbarui pukul ' + timeStr;
+
+      // Cards Total
+      document.getElementById('stat-balita').textContent = b;
+      document.getElementById('stat-bumil').textContent = h;
+      document.getElementById('stat-busui').textContent = m;
+
+      document.getElementById('public-source-info').textContent = gasUrl.trim() ? 'Mode Viewer Publik' : 'Mode Viewer Publik (Lokal)';
+      document.getElementById('admin-mode-desc').textContent = gasUrl.trim()
+        ? 'Terhubung ke Google Apps Script Endpoint'
+        : 'Mode Sandbox Lokal aktif (data tersimpan di browser)';
+
+      // Percentages
+      const pB = total > 0 ? Math.round((b / total) * 100) : 0;
+      const pH = total > 0 ? Math.round((h / total) * 100) : 0;
+      const pM = total > 0 ? Math.round((m / total) * 100) : 0;
+
+      document.getElementById('pct-balita').textContent = pB + '%';
+      document.getElementById('pct-bumil').textContent = pH + '%';
+      document.getElementById('pct-busui').textContent = pM + '%';
+
+      // Gender Split for Balita
+      const bL = bList.filter(x => x.gender === 'L').length;
+      const bP = bList.filter(x => x.gender === 'P').length;
+      document.getElementById('balita-gender-split').innerHTML = `
+        <span>Laki-laki: <span class="font-bold text-blue-600">${bL}</span></span>
+        <span>Perempuan: <span class="font-bold text-rose-500">${bP}</span></span>
+      `;
+
+      // Chart Generation
+      document.getElementById('public-bar-chart').innerHTML = `
+        <!-- Balita -->
+        <div>
+          <div class="flex justify-between text-sm font-bold text-slate-700 mb-2">
+            <span>1. Balita</span>
+            <span class="text-[#0083b0]">${b} Orang (${pB}%)</span>
+          </div>
+          <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+            <div class="bg-[#0083b0] h-full rounded-full transition-all duration-500" style="width: ${pB}%"></div>
+          </div>
+        </div>
+        <!-- Ibu Hamil -->
+        <div>
+          <div class="flex justify-between text-sm font-bold text-slate-700 mb-2">
+            <span>2. Ibu Hamil</span>
+            <span class="text-rose-500">${h} Orang (${pH}%)</span>
+          </div>
+          <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+            <div class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: ${pH}%"></div>
+          </div>
+        </div>
+        <!-- Ibu Menyusui -->
+        <div>
+          <div class="flex justify-between text-sm font-bold text-slate-700 mb-2">
+            <span>3. Ibu Menyusui</span>
+            <span class="text-amber-500">${m} Orang (${pM}%)</span>
+          </div>
+          <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+            <div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: ${pM}%"></div>
+          </div>
+        </div>
+      `;
+
+      renderViewerTable();
+    }
+
+    function switchViewerTab(tab) {
+      viewerTab = tab;
+      ['balita', 'ibuHamil', 'ibuMenyusui'].forEach(t => {
+        const btn = document.getElementById('vtab-' + t);
+        btn.className = t === tab
+          ? 'px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-blue-700 shadow-sm whitespace-nowrap transition-colors'
+          : 'px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors';
+      });
+      renderViewerTable();
+    }
+
+    function renderViewerTable() {
+      const head = document.getElementById('viewer-table-head');
+      const body = document.getElementById('viewer-table-body');
+      const q = (document.getElementById('viewer-search-input').value || '').trim().toLowerCase();
+      const allRows = dataset[viewerTab] || [];
+      const rows = !q ? allRows : allRows.filter(r => Object.values(r).some(v => String(v || '').toLowerCase().includes(q)));
+
+      let cols = [];
+      if (viewerTab === 'balita') {
+        cols = ['No.', 'Nama Lengkap Balita', 'Tgl Lahir', 'Gender', 'NIK Balita', 'Nama Ibu', 'NIK Ibu'];
+      } else if (viewerTab === 'ibuHamil') {
+        cols = ['No.', 'Nama Lengkap Ibu Hamil', 'Tgl Lahir', 'Gender', 'NIK Ibu Hamil', 'HPHT'];
+      } else {
+        cols = ['No.', 'Nama Ibu Menyusui', 'Tgl Lahir Ibu', 'Gender', 'NIK Ibu', 'Nama Anak', 'NIK Anak', 'Tgl Lahir Anak'];
+      }
+
+      head.innerHTML = '<tr>' + cols.map(c => '<th class="px-3 py-2.5 whitespace-nowrap">' + c + '</th>').join('') + '</tr>';
+
+      if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="' + cols.length + '" class="px-4 py-8 text-center text-slate-500">Belum ada data yang sesuai.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = rows.map((r, idx) => {
+        let cells = [];
+        if (viewerTab === 'balita') {
+          cells = [idx + 1, r.namaBalita, r.tglLahirBalita, r.gender, r.nikBalita, r.namaIbu, r.nikIbu];
+        } else if (viewerTab === 'ibuHamil') {
+          cells = [idx + 1, r.namaIbuHamil, r.tglLahirIbuHamil, r.gender, r.nikIbuHamil, r.hpht];
+        } else {
+          cells = [idx + 1, r.namaIbuMenyusui, r.tglLahirIbu, r.gender, r.nikIbu, r.namaAnak, r.nikAnak, r.tglLahirAnak];
+        }
+        const tdHtml = cells.map((c, i) => '<td class="px-3 py-2.5 whitespace-nowrap ' + (i === 0 || String(c).length === 16 ? 'font-mono tabular-nums' : '') + '">' + escapeHtml(c || '-') + '</td>').join('');
+        return '<tr class="hover:bg-slate-50">' + tdHtml + '</tr>';
+      }).join('');
+    }
+
+    function saveGasEndpoint() {
+      gasUrl = document.getElementById('gas-url-input').value.trim();
+      if (gasUrl) localStorage.setItem(LS_URL, gasUrl);
+      else localStorage.removeItem(LS_URL);
+      showToast(gasUrl ? 'URL GAS disimpan. Memuat ulang data...' : 'Beralih ke Sandbox Lokal.', 'success');
+      loadAllData();
+    }
+
+    function openLoginModal() {
+      document.getElementById('login-error').classList.add('hidden');
+      document.getElementById('login-modal').classList.remove('hidden');
+    }
+
+    function closeLoginModal() {
+      document.getElementById('login-modal').classList.add('hidden');
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById('login-user').value.trim().toUpperCase();
+      const pass = document.getElementById('login-pass').value;
+      if ((user === 'ADMIN' || user === 'admin') && pass === '123') {
+        closeLoginModal();
+        document.getElementById('public-view').classList.add('hidden');
+        document.getElementById('admin-view').classList.remove('hidden');
+        document.getElementById('btn-login-open').classList.add('hidden');
+        document.getElementById('btn-logout').classList.remove('hidden');
+        document.getElementById('gas-url-input').value = gasUrl;
+        switchTab(activeTab);
+        showToast('Login admin berhasil.', 'success');
+      } else {
+        const err = document.getElementById('login-error');
+        err.textContent = 'Username atau password salah.';
+        err.classList.remove('hidden');
+      }
+    }
+
+    function logoutAdmin() {
+      document.getElementById('admin-view').classList.add('hidden');
+      document.getElementById('public-view').classList.remove('hidden');
+      document.getElementById('btn-logout').classList.add('hidden');
+      document.getElementById('btn-login-open').classList.remove('hidden');
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      ['balita', 'ibuHamil', 'ibuMenyusui'].forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        btn.className = t === tab
+          ? 'px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-blue-700 shadow-sm whitespace-nowrap transition-colors'
+          : 'px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 whitespace-nowrap transition-colors';
+      });
+      renderTable();
+    }
+
+    function getFilteredRecords() {
+      const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+      const rows = dataset[activeTab] || [];
+      if (!q) return rows;
+      return rows.filter(r => Object.values(r).some(v => String(v || '').toLowerCase().includes(q)));
+    }
+
+    function renderTable() {
+      const head = document.getElementById('table-head');
+      const body = document.getElementById('table-body');
+      const rows = getFilteredRecords();
+
+      let cols = [];
+      if (activeTab === 'balita') {
+        cols = ['No.', 'Nama Lengkap Balita', 'Tgl Lahir', 'Gender', 'NIK Balita', 'Nama Ibu', 'NIK Ibu', 'Aksi'];
+      } else if (activeTab === 'ibuHamil') {
+        cols = ['No.', 'Nama Lengkap Ibu Hamil', 'Tgl Lahir', 'Gender', 'NIK Ibu Hamil', 'HPHT', 'Aksi'];
+      } else {
+        cols = ['No.', 'Nama Ibu Menyusui', 'Tgl Lahir Ibu', 'Gender', 'NIK Ibu', 'Nama Anak', 'NIK Anak', 'Tgl Lahir Anak', 'Aksi'];
+      }
+
+      head.innerHTML = '<tr>' + cols.map(c => '<th class="px-3 py-2.5 whitespace-nowrap">' + c + '</th>').join('') + '</tr>';
+
+      if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="' + cols.length + '" class="px-4 py-8 text-center text-slate-500">Belum ada data yang sesuai.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = rows.map((r, idx) => {
+        let cells = [];
+        if (activeTab === 'balita') {
+          cells = [idx + 1, r.namaBalita, r.tglLahirBalita, r.gender, r.nikBalita, r.namaIbu, r.nikIbu];
+        } else if (activeTab === 'ibuHamil') {
+          cells = [idx + 1, r.namaIbuHamil, r.tglLahirIbuHamil, r.gender, r.nikIbuHamil, r.hpht];
+        } else {
+          cells = [idx + 1, r.namaIbuMenyusui, r.tglLahirIbu, r.gender, r.nikIbu, r.namaAnak, r.nikAnak, r.tglLahirAnak];
+        }
+        const tdHtml = cells.map((c, i) => '<td class="px-3 py-2.5 whitespace-nowrap ' + (i === 0 || String(c).length === 16 ? 'font-mono tabular-nums' : '') + '">' + escapeHtml(c || '-') + '</td>').join('');
+        return '<tr class="hover:bg-slate-50">' + tdHtml +
+          '<td class="px-3 py-2.5 whitespace-nowrap flex items-center gap-2">' +
+            '<button onclick="openFormModal(\'' + escapeHtml(r.id) + '\')" class="text-blue-600 hover:underline font-medium">Edit</button>' +
+            '<button onclick="deleteRecord(\'' + escapeHtml(r.id) + '\')" class="text-red-600 hover:underline font-medium">Hapus</button>' +
+          '</td></tr>';
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function nikFieldHtml(id, label, value) {
+      const len = (value || '').length;
+      return '<div>' +
+        '<div class="flex justify-between items-center mb-1">' +
+          '<label class="text-xs font-medium text-slate-700">' + label + '</label>' +
+          '<span id="cnt-' + id + '" class="text-[11px] font-mono tabular-nums ' + (len === 16 ? 'text-blue-700 font-semibold' : 'text-amber-600') + '">' + len + '/16</span>' +
+        '</div>' +
+        '<input id="' + id + '" type="text" inputmode="numeric" maxlength="16" required value="' + escapeHtml(value || '') + '" oninput="onNikInput(this, \'cnt-' + id + '\')" class="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />' +
+      '</div>';
+    }
+
+    function onNikInput(input, cntId) {
+      input.value = sanitizeNik(input.value);
+      const len = input.value.length;
+      const el = document.getElementById(cntId);
+      el.textContent = len + '/16';
+      el.className = 'text-[11px] font-mono tabular-nums ' + (len === 16 ? 'text-blue-700 font-semibold' : 'text-amber-600');
+    }
+
+    function checkHphtInput() {
+      const hphtEl = document.getElementById('f-hpht');
+      if (!hphtEl) return;
+      const banner = document.getElementById('hpht-warning-banner');
+      const txt = document.getElementById('hpht-warning-text');
+      const val = hphtEl.value;
+      if (!val) { banner.classList.add('hidden'); return; }
+      const [y, m, d] = val.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const cutoff = new Date(today.getFullYear(), today.getMonth() - 11, today.getDate());
+      if (dt < cutoff) {
+        txt.textContent = 'Peringatan: Tanggal HPHT melebihi batas maksimal 11 bulan ke belakang.';
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function triggerCrossAutofill(kind, nameVal) {
+      const idx = buildCrossIndex();
+      const map = kind === 'mother' ? idx.mothers : idx.children;
+      const match = map[normName(nameVal)];
+      if (!match) return;
+      const banner = document.getElementById('autofill-banner');
+      if (kind === 'mother') {
+        if (activeTab === 'balita' && match.nik) {
+          const nikEl = document.getElementById('f-nikIbu');
+          if (nikEl) { nikEl.value = sanitizeNik(match.nik); onNikInput(nikEl, 'cnt-f-nikIbu'); }
+        } else if (activeTab === 'ibuHamil') {
+          const nikEl = document.getElementById('f-nikIbuHamil');
+          const tglEl = document.getElementById('f-tglLahirIbuHamil');
+          if (nikEl && match.nik) { nikEl.value = sanitizeNik(match.nik); onNikInput(nikEl, 'cnt-f-nikIbuHamil'); }
+          if (tglEl && match.tglLahir) tglEl.value = match.tglLahir;
+        } else if (activeTab === 'ibuMenyusui') {
+          const nikEl = document.getElementById('f-nikIbu');
+          const tglEl = document.getElementById('f-tglLahirIbu');
+          if (nikEl && match.nik) { nikEl.value = sanitizeNik(match.nik); onNikInput(nikEl, 'cnt-f-nikIbu'); }
+          if (tglEl && match.tglLahir) tglEl.value = match.tglLahir;
+        }
+      } else {
+        if (activeTab === 'balita') {
+          const nikEl = document.getElementById('f-nikBalita');
+          const tglEl = document.getElementById('f-tglLahirBalita');
+          if (nikEl && match.nik) { nikEl.value = sanitizeNik(match.nik); onNikInput(nikEl, 'cnt-f-nikBalita'); }
+          if (tglEl && match.tglLahir) tglEl.value = match.tglLahir;
+        } else if (activeTab === 'ibuMenyusui') {
+          const nikEl = document.getElementById('f-nikAnak');
+          const tglEl = document.getElementById('f-tglLahirAnak');
+          if (nikEl && match.nik) { nikEl.value = sanitizeNik(match.nik); onNikInput(nikEl, 'cnt-f-nikAnak'); }
+          if (tglEl && match.tglLahir) tglEl.value = match.tglLahir;
+        }
+      }
+      banner.textContent = 'Auto-fill lintas sheet: NIK & Tanggal Lahir terisi otomatis dari data "' + match.source + '".';
+      banner.classList.remove('hidden');
+    }
+
+    function openFormModal(id = null) {
+      editingId = id;
+      pendingDuplicateRecord = null;
+      const existing = id ? (dataset[activeTab] || []).find(r => r.id === id) : {};
+      document.getElementById('form-modal-title').textContent = id ? 'Edit Data Penerima' : 'Tambah Data Penerima';
+      document.getElementById('autofill-banner').classList.add('hidden');
+      document.getElementById('hpht-warning-banner').classList.add('hidden');
+      
+      const form = document.getElementById('record-form');
+
+      if (activeTab === 'balita') {
+        form.innerHTML =
+          '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Nama Lengkap Balita</label>' +
+            '<input id="f-namaBalita" list="child-names-list" required value="' + escapeHtml(existing.namaBalita || '') + '" oninput="triggerCrossAutofill(\'child\', this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Tgl Lahir Balita</label>' +
+            '<input id="f-tglLahirBalita" type="date" required value="' + escapeHtml(existing.tglLahirBalita || '') + '" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Gender</label>' +
+            '<select id="f-gender" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">' +
+              '<option value="L"' + (existing.gender === 'L' ? ' selected' : '') + '>Laki-laki (L)</option>' +
+              '<option value="P"' + (existing.gender === 'P' ? ' selected' : '') + '>Perempuan (P)</option>' +
+            '</select></div>' +
+            nikFieldHtml('f-nikBalita', 'NIK Balita (16 digit)', existing.nikBalita || '') +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Nama Ibu</label>' +
+            '<input id="f-namaIbu" list="mother-names-list" required value="' + escapeHtml(existing.namaIbu || '') + '" oninput="triggerCrossAutofill(\'mother\', this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            nikFieldHtml('f-nikIbu', 'NIK Ibu (16 digit)', existing.nikIbu || '') +
+          '</div>' +
+          '<div class="pt-3 flex justify-end gap-2">' +
+            '<button type="button" onclick="closeFormModal()" class="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Batal</button>' +
+            '<button type="submit" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-sm">Simpan Data</button>' +
+          '</div>';
+      } else if (activeTab === 'ibuHamil') {
+        form.innerHTML =
+          '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Nama Lengkap Ibu Hamil</label>' +
+            '<input id="f-namaIbuHamil" list="mother-names-list" required value="' + escapeHtml(existing.namaIbuHamil || '') + '" oninput="triggerCrossAutofill(\'mother\', this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Tgl Lahir Ibu Hamil</label>' +
+            '<input id="f-tglLahirIbuHamil" type="date" required value="' + escapeHtml(existing.tglLahirIbuHamil || '') + '" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Gender</label>' +
+            '<select id="f-gender" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">' +
+              '<option value="P" selected>Perempuan (P)</option>' +
+            '</select></div>' +
+            nikFieldHtml('f-nikIbuHamil', 'NIK Ibu Hamil (16 digit)', existing.nikIbuHamil || '') +
+            '<div class="sm:col-span-2"><label class="block text-xs font-medium text-slate-700 mb-1">HPHT (Hari Pertama Haid Terakhir)</label>' +
+            '<input id="f-hpht" type="date" required value="' + escapeHtml(existing.hpht || '') + '" onchange="checkHphtInput()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+          '</div>' +
+          '<div class="pt-3 flex justify-end gap-2">' +
+            '<button type="button" onclick="closeFormModal()" class="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Batal</button>' +
+            '<button type="submit" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-sm">Simpan Data</button>' +
+          '</div>';
+        setTimeout(checkHphtInput, 0);
+      } else {
+        form.innerHTML =
+          '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Nama Ibu Menyusui</label>' +
+            '<input id="f-namaIbuMenyusui" list="mother-names-list" required value="' + escapeHtml(existing.namaIbuMenyusui || '') + '" oninput="triggerCrossAutofill(\'mother\', this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Tgl Lahir Ibu</label>' +
+            '<input id="f-tglLahirIbu" type="date" required value="' + escapeHtml(existing.tglLahirIbu || '') + '" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Gender</label>' +
+            '<select id="f-gender" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">' +
+              '<option value="P" selected>Perempuan (P)</option>' +
+            '</select></div>' +
+            nikFieldHtml('f-nikIbu', 'NIK Ibu (16 digit)', existing.nikIbu || '') +
+            '<div><label class="block text-xs font-medium text-slate-700 mb-1">Nama Anak</label>' +
+            '<input id="f-namaAnak" list="child-names-list" required value="' + escapeHtml(existing.namaAnak || '') + '" oninput="triggerCrossAutofill(\'child\', this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+            nikFieldHtml('f-nikAnak', 'NIK Anak (16 digit)', existing.nikAnak || '') +
+            '<div class="sm:col-span-2"><label class="block text-xs font-medium text-slate-700 mb-1">Tgl Lahir Anak</label>' +
+            '<input id="f-tglLahirAnak" type="date" required value="' + escapeHtml(existing.tglLahirAnak || '') + '" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" /></div>' +
+          '</div>' +
+          '<div class="pt-3 flex justify-end gap-2">' +
+            '<button type="button" onclick="closeFormModal()" class="px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Batal</button>' +
+            '<button type="submit" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-sm">Simpan Data</button>' +
+          '</div>';
+      }
+
+      document.getElementById('form-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeFormModal() {
+      document.getElementById('form-modal').classList.add('hidden');
+    }
+
+    function findDuplicateRecord(record) {
+      const list = dataset[activeTab] || [];
+      for (let i = 0; i < list.length; i++) {
+        const row = list[i];
+        if (record.id && row.id === record.id) continue;
+        if (activeTab === 'balita') {
+          if (record.nikBalita && row.nikBalita === record.nikBalita) return 'NIK Balita (' + row.nikBalita + ') sudah terdaftar (ID: ' + row.id + ').';
+          if (normName(record.namaBalita) && normName(row.namaBalita) === normName(record.namaBalita)) return 'Nama Balita "' + row.namaBalita + '" sudah terdaftar (ID: ' + row.id + ').';
+        } else if (activeTab === 'ibuHamil') {
+          if (record.nikIbuHamil && row.nikIbuHamil === record.nikIbuHamil) return 'NIK Ibu Hamil (' + row.nikIbuHamil + ') sudah terdaftar (ID: ' + row.id + ').';
+          if (normName(record.namaIbuHamil) && normName(row.namaIbuHamil) === normName(record.namaIbuHamil)) return 'Nama Ibu Hamil "' + row.namaIbuHamil + '" sudah terdaftar (ID: ' + row.id + ').';
+        } else {
+          if (record.nikAnak && row.nikAnak === record.nikAnak) return 'NIK Anak (' + row.nikAnak + ') sudah terdaftar (ID: ' + row.id + ').';
+          if (record.nikIbu && row.nikIbu === record.nikIbu) return 'NIK Ibu (' + row.nikIbu + ') sudah terdaftar (ID: ' + row.id + ').';
+        }
+      }
+      return null;
+    }
+
+    function cancelDuplicateSave() {
+      pendingDuplicateRecord = null;
+      document.getElementById('duplicate-modal').classList.add('hidden');
+      showToast('Batal menyimpan. Data duplikat dihindari.', 'info');
+    }
+
+    async function confirmDuplicateSave() {
+      if (!pendingDuplicateRecord) return;
+      const rec = pendingDuplicateRecord;
+      pendingDuplicateRecord = null;
+      document.getElementById('duplicate-modal').classList.add('hidden');
+      await performSaveRecord(rec, true);
+    }
+
+    async function performSaveRecord(record, allowDuplicate) {
+      const action = editingId ? 'update' : 'create';
+      try {
+        if (!gasUrl.trim()) {
+          const list = dataset[activeTab];
+          const idx = list.findIndex(x => x.id === record.id);
+          if (idx >= 0) list[idx] = record;
+          else list.unshift(record);
+          localStorage.setItem(LS_DATA, JSON.stringify(dataset));
+        } else {
+          const res = await fetch(gasUrl.trim(), {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action, category: activeTab, record, allowDuplicate: Boolean(allowDuplicate) })
+          });
+          const json = await res.json();
+          if (json && json.duplicate) {
+            // Tampilkan custom modal pop up dari respons server Google Sheets
+            pendingDuplicateRecord = record;
+            document.getElementById('duplicate-modal-text').textContent = json.error || 'Data dengan NIK tersebut sudah terdaftar di Google Sheets.';
+            document.getElementById('duplicate-modal').classList.remove('hidden');
             lucide.createIcons();
-            loadDatabase();
-
-            // Cek status login: jika admin sudah login tampilkan dashboard admin, jika belum tampilkan viewer publik
-            if (localStorage.getItem(STORAGE_KEYS.AUTH) === 'true') {
-                showDashboard();
-            } else {
-                showPublicViewer();
-            }
-
-            // Event Login
-            document.getElementById('login-form').addEventListener('submit', handleLogin);
-            // Event Submit Form Data
-            document.getElementById('data-form').addEventListener('submit', handleFormSubmit);
-            // Event Submit Modal Edit Data
-            document.getElementById('edit-modal-form').addEventListener('submit', handleEditModalSubmit);
-        });
-
-        // --- FUNGSI NOTIFIKASI TOAST ---
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-            const toast = document.createElement('div');
-            
-            const styles = {
-                success: 'bg-emerald-600 text-white border-emerald-700',
-                error: 'bg-rose-600 text-white border-rose-700',
-                warning: 'bg-amber-500 text-slate-950 border-amber-600',
-                info: 'bg-sky-600 text-white border-sky-700'
-            };
-
-            const icons = {
-                success: 'check-circle',
-                error: 'x-circle',
-                warning: 'alert-triangle',
-                info: 'info'
-            };
-
-            toast.className = `${styles[type] || styles.info} border px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-semibold animate-toast pointer-events-auto`;
-            toast.innerHTML = `
-                <i data-lucide="${icons[type] || 'info'}" class="w-5 h-5 shrink-0"></i>
-                <span>${message}</span>
-            `;
-
-            container.appendChild(toast);
-            if (window.lucide) {
-                lucide.createIcons();
-            }
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(10px)';
-                toast.style.transition = 'all 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
+            return;
+          }
+          if (json.error) throw new Error(json.error);
+          await loadAllData();
         }
+        closeFormModal();
+        renderPublic();
+        renderTable();
+        refreshDatalists();
+        showToast('Data berhasil disimpan.', 'success');
+      } catch (err) {
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+      }
+    }
 
-        // --- LOGIKA LOGIN, LOGOUT & VIEWER PUBLIK ---
-        function openLoginModal() {
-            const modal = document.getElementById('login-screen');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            setTimeout(() => {
-                document.getElementById('login-username').focus();
-            }, 50);
-            lucide.createIcons();
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      let record = { id: editingId || genId() };
+      const niksToCheck = [];
+
+      if (activeTab === 'balita') {
+        record.namaBalita = document.getElementById('f-namaBalita').value.trim();
+        record.tglLahirBalita = document.getElementById('f-tglLahirBalita').value;
+        record.gender = document.getElementById('f-gender').value;
+        record.nikBalita = document.getElementById('f-nikBalita').value;
+        record.namaIbu = document.getElementById('f-namaIbu').value.trim();
+        record.nikIbu = document.getElementById('f-nikIbu').value;
+        niksToCheck.push(record.nikBalita, record.nikIbu);
+      } else if (activeTab === 'ibuHamil') {
+        record.namaIbuHamil = document.getElementById('f-namaIbuHamil').value.trim();
+        record.tglLahirIbuHamil = document.getElementById('f-tglLahirIbuHamil').value;
+        record.gender = document.getElementById('f-gender').value;
+        record.nikIbuHamil = document.getElementById('f-nikIbuHamil').value;
+        record.hpht = document.getElementById('f-hpht').value;
+        niksToCheck.push(record.nikIbuHamil);
+      } else {
+        record.namaIbuMenyusui = document.getElementById('f-namaIbuMenyusui').value.trim();
+        record.tglLahirIbu = document.getElementById('f-tglLahirIbu').value;
+        record.gender = document.getElementById('f-gender').value;
+        record.nikIbu = document.getElementById('f-nikIbu').value;
+        record.namaAnak = document.getElementById('f-namaAnak').value.trim();
+        record.nikAnak = document.getElementById('f-nikAnak').value;
+        record.tglLahirAnak = document.getElementById('f-tglLahirAnak').value;
+        niksToCheck.push(record.nikIbu, record.nikAnak);
+      }
+
+      if (niksToCheck.some(n => !/^\d{16}$/.test(n))) {
+        showToast('Semua kolom NIK wajib berisi tepat 16 digit angka.', 'error');
+        return;
+      }
+
+      // Deteksi Duplikat Lokal dan Panggil Pop up Modal (Message Box) Kustom
+      const dupReason = findDuplicateRecord(record);
+      if (dupReason) {
+        pendingDuplicateRecord = record;
+        document.getElementById('duplicate-modal-text').textContent = dupReason;
+        document.getElementById('duplicate-modal').classList.remove('hidden');
+        lucide.createIcons();
+        return;
+      }
+
+      await performSaveRecord(record, false);
+    }
+
+    async function deleteRecord(id) {
+      try {
+        if (!gasUrl.trim()) {
+          dataset[activeTab] = dataset[activeTab].filter(x => x.id !== id);
+          localStorage.setItem(LS_DATA, JSON.stringify(dataset));
+        } else {
+          const res = await fetch(gasUrl.trim(), {
+            method: 'POST',
+            redirect: 'follow',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete', category: activeTab, record: { id } })
+          });
+          const json = await res.json();
+          if (json.error) throw new Error(json.error);
+          await loadAllData();
         }
-
-        function closeLoginModal() {
-            const modal = document.getElementById('login-screen');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        function renderPublicSummary() {
-            const cBalita = db.balita.length;
-            const cBumil = db.bumil.length;
-            const cBusui = db.busui.length;
-            const total = cBalita + cBumil + cBusui;
-
-            const pctBalita = total > 0 ? Math.round((cBalita / total) * 100) : 0;
-            const pctBumil = total > 0 ? Math.round((cBumil / total) * 100) : 0;
-            const pctBusui = total > 0 ? Math.round((cBusui / total) * 100) : 0;
-
-            const balitaL = db.balita.filter(b => b.gender === 'L').length;
-            const balitaP = db.balita.filter(b => b.gender === 'P').length;
-
-            document.getElementById('public-total-all').textContent = total.toLocaleString('id-ID');
-            document.getElementById('public-count-balita').textContent = cBalita.toLocaleString('id-ID');
-            document.getElementById('public-count-bumil').textContent = cBumil.toLocaleString('id-ID');
-            document.getElementById('public-count-busui').textContent = cBusui.toLocaleString('id-ID');
-
-            document.getElementById('public-balita-l').textContent = balitaL;
-            document.getElementById('public-balita-p').textContent = balitaP;
-
-            document.getElementById('public-pct-balita').textContent = `${pctBalita}%`;
-            document.getElementById('public-pct-bumil').textContent = `${pctBumil}%`;
-            document.getElementById('public-pct-busui').textContent = `${pctBusui}%`;
-
-            document.getElementById('bar-label-balita').textContent = `${cBalita} Orang (${pctBalita}%)`;
-            document.getElementById('bar-fill-balita').style.width = `${pctBalita}%`;
-
-            document.getElementById('bar-label-bumil').textContent = `${cBumil} Orang (${pctBumil}%)`;
-            document.getElementById('bar-fill-bumil').style.width = `${pctBumil}%`;
-
-            document.getElementById('bar-label-busui').textContent = `${cBusui} Orang (${pctBusui}%)`;
-            document.getElementById('bar-fill-busui').style.width = `${pctBusui}%`;
-
-            const now = new Date();
-            document.getElementById('public-last-updated').textContent =
-                `Diperbarui pukul ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
-
-            renderPublicSearchResults();
-        }
-
-        function setPublicSearchCategory(cat) {
-            publicSearchCategory = cat;
-            document.querySelectorAll('.pub-cat-btn').forEach(btn => {
-                if (btn.dataset.cat === cat) {
-                    btn.className = 'pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white shadow-xs transition';
-                } else {
-                    btn.className = 'pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
-                }
-            });
-            renderPublicSearchResults();
-        }
-
-        function clearPublicSearch() {
-            const input = document.getElementById('public-search-input');
-            if (input) input.value = '';
-            renderPublicSearchResults();
-        }
-
-        function maskNikPublic(nik) {
-            const clean = cleanNik(nik);
-            if (clean.length < 8) return clean || '-';
-            return `${clean.slice(0, 6)}******${clean.slice(-4)}`;
-        }
-
-        function renderPublicSearchResults() {
-            const input = document.getElementById('public-search-input');
-            const clearBtn = document.getElementById('public-search-clear');
-            const container = document.getElementById('public-search-results');
-            if (!input || !container) return;
-
-            const keyword = input.value.toLowerCase().trim();
-            if (clearBtn) {
-                if (keyword) clearBtn.classList.remove('hidden');
-                else clearBtn.classList.add('hidden');
-            }
-
-            if (!keyword) {
-                container.innerHTML = `
-                    <div class="text-center py-6 px-4 bg-slate-50/80 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
-                        Ketik minimal 2 huruf nama atau angka NIK untuk menampilkan daftar penerima manfaat.
-                    </div>
-                `;
-                return;
-            }
-
-            const results = [];
-            const catsToSearch = publicSearchCategory === 'all' ? ['balita', 'bumil', 'busui'] : [publicSearchCategory];
-
-            catsToSearch.forEach(cat => {
-                (db[cat] || []).forEach(item => {
-                    const hay = Object.values(item).join(' ').toLowerCase();
-                    if (hay.includes(keyword)) {
-                        results.push({ category: cat, item });
-                    }
-                });
-            });
-
-            if (results.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-6 px-4 bg-amber-50/70 rounded-2xl border border-amber-200/70 text-xs sm:text-sm text-amber-800 font-medium">
-                        Data dengan kata kunci "<strong>${escapeHtml(input.value)}</strong>" tidak ditemukan.
-                    </div>
-                `;
-                return;
-            }
-
-            const badgeMap = {
-                balita: { label: 'Balita', cls: 'bg-sky-100 text-sky-800' },
-                bumil: { label: 'Ibu Hamil', cls: 'bg-rose-100 text-rose-800' },
-                busui: { label: 'Ibu Menyusui', cls: 'bg-amber-100 text-amber-900' }
-            };
-
-            container.innerHTML = `
-                <p class="text-xs font-semibold text-slate-500 px-1">Ditemukan <strong class="text-slate-800">${results.length}</strong> data penerima:</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
-                    ${results.slice(0, 30).map(({ category, item }) => {
-                        const badge = badgeMap[category];
-                        let titleName = '';
-                        let subInfo = '';
-                        if (category === 'balita') {
-                            titleName = item.namaBalita;
-                            subInfo = `NIK: ${maskNikPublic(item.nikBalita)} &bull; Ibu: ${escapeHtml(item.namaIbu)}`;
-                        } else if (category === 'bumil') {
-                            titleName = item.namaIbuHamil;
-                            subInfo = `NIK: ${maskNikPublic(item.nikIbuHamil)} &bull; Tgl Lahir: ${escapeHtml(item.tglLahirIbuHamil)}`;
-                        } else {
-                            titleName = item.namaIbuMenyusui;
-                            subInfo = `NIK: ${maskNikPublic(item.nikIbuMenyusui)} &bull; Anak: ${escapeHtml(item.namaAnak)}`;
-                        }
-                        return `
-                            <div class="p-3.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/80 rounded-2xl flex items-start justify-between gap-3 transition">
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${badge.cls}">${badge.label}</span>
-                                        <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Terdaftar
-                                        </span>
-                                    </div>
-                                    <p class="font-bold text-slate-900 text-sm truncate">${escapeHtml(titleName)}</p>
-                                    <p class="text-xs text-slate-500 mt-0.5 truncate">${subInfo}</p>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-
-        function showPublicViewer() {
-            document.getElementById('main-app').classList.add('hidden');
-            closeLoginModal();
-            document.getElementById('public-viewer').classList.remove('hidden');
-            renderPublicSummary();
-            loadFromGoogleSheetOnce(false);
-            lucide.createIcons();
-        }
-
-        function handleLogin(e) {
-            e.preventDefault();
-            const username = document.getElementById('login-username').value.trim().toUpperCase();
-            const password = document.getElementById('login-password').value.trim();
-
-            if (ADMIN_ACCOUNTS[username] && ADMIN_ACCOUNTS[username] === password) {
-                currentAdminUser = username;
-                localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
-                localStorage.setItem('mbg_active_admin', username);
-                closeLoginModal();
-                showToast(`Login berhasil! Selamat datang, ${username}.`, 'success');
-                showDashboard();
-            } else {
-                showToast('Username atau Kode Keamanan salah!', 'error');
-            }
-        }
-
-        function handleLogout() {
-            localStorage.removeItem(STORAGE_KEYS.AUTH);
-            localStorage.removeItem('mbg_active_admin');
-            document.getElementById('login-password').value = '';
-            showToast('Anda telah keluar ke tampilan Viewer Umum.', 'info');
-            showPublicViewer();
-        }
-
-        function showDashboard() {
-            document.getElementById('public-viewer').classList.add('hidden');
-            closeLoginModal();
-            document.getElementById('main-app').classList.remove('hidden');
-            document.getElementById('active-admin-badge').textContent = currentAdminUser;
-            switchTab(currentTab);
-            // Muat data awal dari Google Sheet tanpa menimpa data lokal jika Sheet kosong
-            loadFromGoogleSheetOnce(false);
-        }
-
-        // --- PENYIMPANAN LOCALSTORAGE ---
-        function loadDatabase() {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEYS.DATA);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    db = {
-                        balita: parsed.balita || [],
-                        bumil: parsed.bumil || [],
-                        busui: parsed.busui || []
-                    };
-                }
-            } catch (err) {
-                console.error('Gagal memuat LocalStorage:', err);
-            }
-        }
-
-        function saveDatabase() {
-            localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(db));
-        }
-
-        // --- FORMATTER TANGGAL (YYYY-MM-DD <-> DD/MM/YYYY) ---
-        function formatToDDMMYYYY(isoDate) {
-            if (!isoDate) return '-';
-            const str = String(isoDate).trim();
-            if (str.includes('T')) {
-                const d = new Date(str);
-                if (!isNaN(d.getTime())) {
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const yyyy = d.getFullYear();
-                    return `${dd}/${mm}/${yyyy}`;
-                }
-            }
-            if (str.includes('/')) {
-                const p = str.split('/');
-                if (p.length === 3) {
-                    return `${p[0].padStart(2, '0')}/${p[1].padStart(2, '0')}/${p[2]}`;
-                }
-                return str;
-            }
-            const parts = str.split('-');
-            if (parts.length !== 3) return str;
-            return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
-        }
-
-        function formatToISO(ddmmyyyy) {
-            if (!ddmmyyyy) return '';
-            const str = String(ddmmyyyy).trim();
-            if (str.includes('T')) {
-                const d = new Date(str);
-                if (!isNaN(d.getTime())) {
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const yyyy = d.getFullYear();
-                    return `${yyyy}-${mm}-${dd}`;
-                }
-            }
-            if (str.includes('-')) {
-                const p = str.split('-');
-                if (p.length === 3 && p[0].length === 4) {
-                    return `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
-                }
-                return str;
-            }
-            const parts = str.split('/');
-            if (parts.length !== 3) return '';
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        }
-
-        // --- VALIDASI HPHT MAKSIMAL 11 BULAN KE BELAKANG ---
-        function checkHphtValidity(isoDateStr) {
-            if (!isoDateStr) return { valid: true };
-            const hphtDate = new Date(isoDateStr);
-            const today = new Date();
-            
-            const elevenMonthsAgo = new Date();
-            elevenMonthsAgo.setMonth(today.getMonth() - 11);
-
-            if (hphtDate > today) {
-                return {
-                    valid: false,
-                    message: 'Tanggal HPHT tidak boleh melebihi tanggal hari ini!'
-                };
-            }
-            if (hphtDate < elevenMonthsAgo) {
-                return {
-                    valid: false,
-                    message: 'PERINGATAN: Tanggal HPHT lebih dari 11 bulan ke belakang dari hari ini. Mohon periksa kembali usia kehamilan ibu.'
-                };
-            }
-            return { valid: true };
-        }
-
-        // --- NAVIGASI TAB ---
-        function switchTab(tabKey) {
-            currentTab = tabKey;
-            const config = TAB_CONFIG[tabKey];
-
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-amber-300', 'text-slate-900', 'shadow');
-                btn.classList.add('text-sky-100', 'hover:bg-sky-600');
-            });
-            const activeBtn = document.getElementById(`tab-btn-${tabKey}`);
-            activeBtn.classList.remove('text-sky-100', 'hover:bg-sky-600');
-            activeBtn.classList.add('bg-amber-300', 'text-slate-900', 'shadow');
-
-            document.getElementById('category-title').textContent = config.title;
-            document.getElementById('category-subtitle').textContent = config.subtitle;
-            document.getElementById('table-banner-title').textContent = config.title;
-            document.getElementById('search-input').value = '';
-
-            resetForm();
-            renderTableHeaders();
-            renderTable();
-            lucide.createIcons();
-        }
-
-        // --- RENDER FORM DINAMIS ---
-        function renderFormFields(editData = null, targetContainerId = 'dynamic-fields', prefix = 'field') {
-            const container = document.getElementById(targetContainerId);
-            const config = TAB_CONFIG[currentTab];
-            container.innerHTML = '';
-
-            // Peta kolom nama yang memicu isi otomatis NIK (dan tanggal lahir) lintas semua sheet
-            const nameAutoFillTriggers = ['namaBalita', 'namaIbu', 'namaIbuHamil', 'namaIbuMenyusui', 'namaAnak'];
-
-            config.fields.forEach(field => {
-                const wrapper = document.createElement('div');
-                const val = editData ? (editData[field.name] || '') : (field.value || '');
-                const inputId = `${prefix}-${field.name}`;
-
-                let inputHtml = '';
-                if (field.type === 'select') {
-                    const opts = field.options.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o === 'L' ? 'L (Laki-laki)' : 'P (Perempuan)'}</option>`).join('');
-                    inputHtml = `
-                        <select id="${inputId}" name="${field.name}" required
-                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">
-                            ${opts}
-                        </select>`;
-                } else if (field.type === 'readonly') {
-                    inputHtml = `
-                        <input type="text" id="${inputId}" name="${field.name}" value="P" readonly
-                            class="w-full px-3.5 py-3 bg-slate-200/70 border border-slate-300 rounded-xl text-sm font-bold text-slate-600 cursor-not-allowed outline-none">`;
-                } else if (field.type === 'nik') {
-                    const cleanVal = cleanNik(val).slice(0, 16);
-                    inputHtml = `
-                        <div class="relative">
-                            <input type="text" id="${inputId}" name="${field.name}" value="${cleanVal}"
-                                inputmode="numeric" maxlength="16"
-                                placeholder="${field.placeholder}" required
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16); updateNikCounter('${inputId}')"
-                                class="w-full px-3.5 pr-14 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors">
-                            <span id="${inputId}-counter" class="absolute inset-y-0 right-3 flex items-center text-[11px] font-mono font-bold ${cleanVal.length === 16 ? 'text-emerald-600' : 'text-slate-400'}">
-                                ${cleanVal.length}/16
-                            </span>
-                        </div>`;
-                } else if (field.type === 'date') {
-                    const isoVal = formatToISO(val);
-                    const warningBoxId = prefix === 'modal-field' ? 'modal-validation-warning' : 'validation-warning';
-                    const warningTextId = prefix === 'modal-field' ? 'modal-validation-warning-text' : 'validation-warning-text';
-                    const extraAttr = field.isHpht ? `onchange="validateHphtRealtime(this.value, '${warningBoxId}', '${warningTextId}')"` : '';
-                    inputHtml = `
-                        <input type="date" id="${inputId}" name="${field.name}" value="${isoVal}" required ${extraAttr}
-                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">`;
-                } else {
-                    const autoFillAttr = nameAutoFillTriggers.includes(field.name)
-                        ? `oninput="handleNameAutoFill(this.value, '${field.name}', '${prefix}')" onblur="handleNameAutoFill(this.value, '${field.name}', '${prefix}')"`
-                        : '';
-                    inputHtml = `
-                        <input type="text" id="${inputId}" name="${field.name}" value="${escapeHtml(val)}"
-                            placeholder="${field.placeholder || ''}" required ${autoFillAttr}
-                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">`;
-                }
-
-                wrapper.innerHTML = `
-                    <label for="${inputId}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
-                        ${field.label}
-                    </label>
-                    ${inputHtml}
-                `;
-                container.appendChild(wrapper);
-            });
-        }
-
-        function updateNikCounter(inputId) {
-            const input = document.getElementById(inputId);
-            const counter = document.getElementById(`${inputId}-counter`);
-            if (!input || !counter) return;
-            const len = input.value.length;
-            counter.textContent = `${len}/16`;
-            counter.className = `absolute inset-y-0 right-3 flex items-center text-[11px] font-mono font-bold ${len === 16 ? 'text-emerald-600' : 'text-amber-600'}`;
-        }
-
-        // --- ISI OTOMATIS NIK LINTAS SEMUA SHEET JIKA NAMA SAMA PERSIS ---
-        function normalizeExactName(name) {
-            return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
-        }
-
-        function findPersonAcrossSheets(exactName) {
-            const target = normalizeExactName(exactName);
-            if (!target) return null;
-
-            const excludeId = document.getElementById('modal-edit-id')?.value || document.getElementById('edit-id')?.value || '';
-
-            // 1. Cari di Sheet Balita (baik sebagai Balita maupun sebagai Ibu)
-            for (const row of (db.balita || [])) {
-                if (row.id === excludeId) continue;
-                if (normalizeExactName(row.namaBalita) === target && row.nikBalita) {
-                    return {
-                        nik: cleanNik(row.nikBalita),
-                        tglLahir: row.tglLahirBalita || '',
-                        gender: row.gender || '',
-                        source: 'Sheet Balita (Data Balita)'
-                    };
-                }
-                if (normalizeExactName(row.namaIbu) === target && row.nikIbu) {
-                    return {
-                        nik: cleanNik(row.nikIbu),
-                        tglLahir: '',
-                        gender: 'P',
-                        source: 'Sheet Balita (Data Ibu)'
-                    };
-                }
-            }
-
-            // 2. Cari di Sheet Ibu Hamil
-            for (const row of (db.bumil || [])) {
-                if (row.id === excludeId) continue;
-                if (normalizeExactName(row.namaIbuHamil) === target && row.nikIbuHamil) {
-                    return {
-                        nik: cleanNik(row.nikIbuHamil),
-                        tglLahir: row.tglLahirIbuHamil || '',
-                        gender: 'P',
-                        source: 'Sheet Ibu Hamil'
-                    };
-                }
-            }
-
-            // 3. Cari di Sheet Ibu Menyusui (baik sebagai Ibu Menyusui maupun sebagai Anak)
-            for (const row of (db.busui || [])) {
-                if (row.id === excludeId) continue;
-                if (normalizeExactName(row.namaIbuMenyusui) === target && row.nikIbuMenyusui) {
-                    return {
-                        nik: cleanNik(row.nikIbuMenyusui),
-                        tglLahir: row.tglLahirIbuMenyusui || '',
-                        gender: 'P',
-                        source: 'Sheet Ibu Menyusui (Data Ibu)'
-                    };
-                }
-                if (normalizeExactName(row.namaAnak) === target && row.nikAnak) {
-                    return {
-                        nik: cleanNik(row.nikAnak),
-                        tglLahir: row.tglLahirAnak || '',
-                        gender: '',
-                        source: 'Sheet Ibu Menyusui (Data Anak)'
-                    };
-                }
-            }
-
-            return null;
-        }
-
-        function handleNameAutoFill(rawName, fieldName, prefix) {
-            const nameToNikMap = {
-                namaBalita: { nikField: 'nikBalita', dobField: 'tglLahirBalita', genderField: 'gender' },
-                namaIbu: { nikField: 'nikIbu', dobField: null, genderField: null },
-                namaIbuHamil: { nikField: 'nikIbuHamil', dobField: 'tglLahirIbuHamil', genderField: null },
-                namaIbuMenyusui: { nikField: 'nikIbuMenyusui', dobField: 'tglLahirIbuMenyusui', genderField: null },
-                namaAnak: { nikField: 'nikAnak', dobField: 'tglLahirAnak', genderField: null }
-            };
-
-            const mapping = nameToNikMap[fieldName];
-            if (!mapping) return;
-
-            const match = findPersonAcrossSheets(rawName);
-            if (!match || !match.nik) return;
-
-            const nikEl = document.getElementById(`${prefix}-${mapping.nikField}`);
-            if (nikEl && nikEl.value !== match.nik) {
-                nikEl.value = match.nik;
-                updateNikCounter(`${prefix}-${mapping.nikField}`);
-                nikEl.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-900');
-                setTimeout(() => {
-                    nikEl.classList.remove('bg-emerald-50', 'border-emerald-500', 'text-emerald-900');
-                }, 2200);
-
-                if (mapping.dobField && match.tglLahir) {
-                    const dobEl = document.getElementById(`${prefix}-${mapping.dobField}`);
-                    if (dobEl && !dobEl.value) {
-                        dobEl.value = formatToISO(match.tglLahir);
-                    }
-                }
-                if (mapping.genderField && match.gender) {
-                    const genderEl = document.getElementById(`${prefix}-${mapping.genderField}`);
-                    if (genderEl) {
-                        genderEl.value = match.gender;
-                    }
-                }
-
-                showToast(`NIK terisi otomatis dari ${match.source}!`, 'info');
-            }
-        }
-
-        function validateHphtRealtime(isoDate, boxId = 'validation-warning', textId = 'validation-warning-text') {
-            const warningBox = document.getElementById(boxId);
-            const warningText = document.getElementById(textId);
-            const check = checkHphtValidity(isoDate);
-
-            if (!check.valid) {
-                warningText.textContent = check.message;
-                warningBox.classList.remove('hidden');
-            } else {
-                warningBox.classList.add('hidden');
-            }
-        }
-
-        function resetForm() {
-            document.getElementById('edit-id').value = '';
-            document.getElementById('validation-warning').classList.add('hidden');
-            document.getElementById('cancel-edit-btn').classList.add('hidden');
-            document.getElementById('form-heading').innerHTML = `
-                <i data-lucide="plus-circle" class="w-5 h-5 text-sky-700"></i>
-                <span>TAMBAH DATA BARU</span>
-            `;
-            document.getElementById('submit-btn').innerHTML = `
-                <i data-lucide="save" class="w-4 h-4"></i>
-                <span>SIMPAN DATA</span>
-            `;
-            renderFormFields(null);
-            lucide.createIcons();
-        }
-
-        // --- CRUD: TAMBAH & UPDATE DATA ---
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const config = TAB_CONFIG[currentTab];
-            const editId = document.getElementById('edit-id').value;
-            const entry = {
-                id: editId ? editId : 'MBG-' + Date.now()
-            };
-
-            for (const field of config.fields) {
-                const el = document.getElementById(`field-${field.name}`);
-                let val = el.value.trim();
-
-                if (field.type === 'nik') {
-                    val = cleanNik(val);
-                    if (val.length !== 16) {
-                        showToast(`${field.label} harus berjumlah tepat 16 digit angka!`, 'error');
-                        el.focus();
-                        return;
-                    }
-                }
-
-                if (field.isHpht) {
-                    const check = checkHphtValidity(val);
-                    if (!check.valid) {
-                        showToast(check.message, 'warning');
-                        if (new Date(val) > new Date()) return;
-                    }
-                }
-
-                if (field.type === 'date') {
-                    val = formatToDDMMYYYY(val);
-                }
-
-                entry[field.name] = val;
-            }
-
-            if (editId) {
-                const idx = db[currentTab].findIndex(item => String(item.id) === String(editId));
-                if (idx !== -1) {
-                    db[currentTab][idx] = entry;
-                } else {
-                    db[currentTab].push(entry);
-                }
-                saveDatabase();
-                renderTable();
-                renderPublicSummary();
-                resetForm();
-                showToast('Data berhasil diperbarui & dikirim ke Google Sheet!', 'success');
-                sendToGoogleSheet('update', currentTab, entry);
-            } else {
-                db[currentTab].push(entry);
-                saveDatabase();
-                renderTable();
-                renderPublicSummary();
-                resetForm();
-                showToast('Data baru berhasil disimpan & dikirim ke Google Sheet!', 'success');
-                sendToGoogleSheet('create', currentTab, entry);
-            }
-        }
-
-        function startEdit(id) {
-            const item = db[currentTab].find(d => String(d.id) === String(id));
-            if (!item) return;
-
-            const config = TAB_CONFIG[currentTab];
-            document.getElementById('modal-edit-id').value = item.id;
-            document.getElementById('edit-modal-title').textContent = `EDIT ${config.title}`;
-            document.getElementById('modal-validation-warning').classList.add('hidden');
-
-            renderFormFields(item, 'modal-dynamic-fields', 'modal-field');
-            if (currentTab === 'bumil' && item.hpht) {
-                validateHphtRealtime(formatToISO(item.hpht), 'modal-validation-warning', 'modal-validation-warning-text');
-            }
-
-            const modal = document.getElementById('edit-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            lucide.createIcons();
-        }
-
-        function closeEditModal() {
-            const modal = document.getElementById('edit-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            document.getElementById('modal-edit-id').value = '';
-        }
-
-        function handleEditModalSubmit(e) {
-            e.preventDefault();
-            const config = TAB_CONFIG[currentTab];
-            const editId = document.getElementById('modal-edit-id').value;
-            if (!editId) {
-                showToast('ID data tidak ditemukan. Silakan tutup dan ulangi edit.', 'error');
-                return;
-            }
-
-            const updatedEntry = { id: editId };
-
-            for (const field of config.fields) {
-                const el = document.getElementById(`modal-field-${field.name}`);
-                if (!el) continue;
-                let val = el.value.trim();
-
-                if (field.type === 'nik') {
-                    val = cleanNik(val);
-                    if (val.length !== 16) {
-                        showToast(`${field.label} harus berjumlah tepat 16 digit angka (saat ini ${val.length} digit)!`, 'error');
-                        el.focus();
-                        return;
-                    }
-                }
-
-                if (field.isHpht) {
-                    const check = checkHphtValidity(val);
-                    if (!check.valid) {
-                        showToast(check.message, 'warning');
-                        if (new Date(val) > new Date()) return;
-                    }
-                }
-
-                if (field.type === 'date') {
-                    if (!val) {
-                        showToast(`${field.label} wajib diisi!`, 'error');
-                        el.focus();
-                        return;
-                    }
-                    val = formatToDDMMYYYY(val);
-                }
-
-                updatedEntry[field.name] = val;
-            }
-
-            const idx = db[currentTab].findIndex(item => String(item.id) === String(editId));
-            if (idx !== -1) {
-                db[currentTab][idx] = updatedEntry;
-            } else {
-                db[currentTab].push(updatedEntry);
-            }
-
-            saveDatabase();
-            renderTable();
-            renderPublicSummary();
-            closeEditModal();
-            showToast('Perubahan berhasil disimpan & dikirim ke Google Sheet!', 'success');
-            sendToGoogleSheet('update', currentTab, updatedEntry);
-        }
-
-        // --- CRUD: HAPUS DATA ---
-        function openDeleteModal(id) {
-            deleteTargetId = id;
-            const modal = document.getElementById('delete-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-
-            document.getElementById('confirm-delete-btn').onclick = () => {
-                if (deleteTargetId) {
-                    const targetItem = db[currentTab].find(item => String(item.id) === String(deleteTargetId));
-                    db[currentTab] = db[currentTab].filter(item => String(item.id) !== String(deleteTargetId));
-                    saveDatabase();
-                    renderTable();
-                    renderPublicSummary();
-                    closeDeleteModal();
-                    showToast('Data berhasil dihapus & diperbarui di Google Sheet.', 'success');
-                    if (targetItem) {
-                        sendToGoogleSheet('delete', currentTab, targetItem);
-                    }
-                }
-            };
-        }
-
-        function closeDeleteModal() {
-            deleteTargetId = null;
-            const modal = document.getElementById('delete-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        // --- RENDER TABEL ---
-        function renderTableHeaders() {
-            const tr = document.getElementById('table-headers');
-            const headers = TAB_CONFIG[currentTab].headers;
-            document.getElementById('table-banner-title').colSpan = headers.length;
-            tr.innerHTML = headers.map((h, i) => `
-                <th class="py-3.5 px-3.5 border-r border-amber-400/70 ${i === 0 || h === 'AKSI' ? 'text-center' : 'text-left'} whitespace-nowrap">
-                    ${h}
-                </th>
-            `).join('');
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            const emptyState = document.getElementById('empty-state');
-            const keyword = document.getElementById('search-input').value.toLowerCase().trim();
-            const list = db[currentTab];
-
-            document.getElementById('total-count').innerHTML = `${list.length} <span class="text-xs font-normal">Orang</span>`;
-
-            const filtered = list.filter(item => {
-                if (!keyword) return true;
-                return Object.values(item).some(val => String(val).toLowerCase().includes(keyword));
-            });
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.classList.remove('hidden');
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-            tbody.innerHTML = filtered.map((item, index) => {
-                const no = index + 1;
-                let colsHtml = '';
-
-                if (currentTab === 'balita') {
-                    colsHtml = `
-                        <td class="py-3 px-3.5 text-center font-bold text-slate-600">${no}</td>
-                        <td class="py-3 px-3.5 font-semibold text-slate-900">${escapeHtml(item.namaBalita)}</td>
-                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirBalita)}</td>
-                        <td class="py-3 px-3.5 text-center"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${item.gender === 'L' ? 'bg-sky-100 text-sky-800' : 'bg-pink-100 text-pink-800'}">${escapeHtml(item.gender)}</span></td>
-                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikBalita)}</td>
-                        <td class="py-3 px-3.5 font-medium">${escapeHtml(item.namaIbu)}</td>
-                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikIbu)}</td>
-                    `;
-                } else if (currentTab === 'bumil') {
-                    colsHtml = `
-                        <td class="py-3 px-3.5 text-center font-bold text-slate-600">${no}</td>
-                        <td class="py-3 px-3.5 font-semibold text-slate-900">${escapeHtml(item.namaIbuHamil)}</td>
-                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirIbuHamil)}</td>
-                        <td class="py-3 px-3.5 text-center"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-100 text-pink-800">P</span></td>
-                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikIbuHamil)}</td>
-                        <td class="py-3 px-3.5 font-semibold text-amber-800 whitespace-nowrap">${escapeHtml(item.hpht)}</td>
-                    `;
-                } else if (currentTab === 'busui') {
-                    colsHtml = `
-                        <td class="py-3 px-3.5 text-center font-bold text-slate-600">${no}</td>
-                        <td class="py-3 px-3.5 font-semibold text-slate-900">${escapeHtml(item.namaIbuMenyusui)}</td>
-                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirIbuMenyusui)}</td>
-                        <td class="py-3 px-3.5 text-center"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-pink-100 text-pink-800">P</span></td>
-                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikIbuMenyusui)}</td>
-                        <td class="py-3 px-3.5 font-medium">${escapeHtml(item.namaAnak)}</td>
-                        <td class="py-3 px-3.5 font-mono text-xs sm:text-sm whitespace-nowrap">${escapeHtml(item.nikAnak)}</td>
-                        <td class="py-3 px-3.5 whitespace-nowrap">${escapeHtml(item.tglLahirAnak)}</td>
-                    `;
-                }
-
-                return `
-                    <tr class="hover:bg-sky-50/70 transition">
-                        ${colsHtml}
-                        <td class="py-2.5 px-3.5 whitespace-nowrap text-center">
-                            <div class="inline-flex items-center gap-2">
-                                <button onclick="startEdit('${item.id}')" 
-                                    class="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
-                                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
-                                    <span>Edit</span>
-                                </button>
-                                <button onclick="openDeleteModal('${item.id}')" 
-                                    class="px-3.5 py-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-xs transition flex items-center gap-1">
-                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                    <span>Hapus</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            lucide.createIcons();
-        }
-
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            return String(text)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // --- EXPORT KE PDF (LANDSCAPE) ---
-        function exportToPDF() {
-            const list = db[currentTab];
-            if (list.length === 0) {
-                showToast('Tidak ada data untuk diexport ke PDF.', 'warning');
-                return;
-            }
-
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-                const config = TAB_CONFIG[currentTab];
-
-                const now = new Date();
-                const tglCetak = now.toLocaleDateString('id-ID', {
-                    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                });
-
-                doc.setFillColor(2, 132, 199);
-                doc.rect(14, 12, 269, 14, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(13);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`DATA ${config.title}`, 148.5, 21, { align: 'center' });
-
-                doc.setTextColor(60, 60, 60);
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Tanggal Cetak: ${tglCetak} WIB  |  Total Penerima: ${list.length} Orang`, 14, 32);
-
-                const rows = list.map((item, idx) => {
-                    const no = idx + 1;
-                    if (currentTab === 'balita') {
-                        return [no, item.namaBalita, item.tglLahirBalita, item.gender, item.nikBalita, item.namaIbu, item.nikIbu];
-                    } else if (currentTab === 'bumil') {
-                        return [no, item.namaIbuHamil, item.tglLahirIbuHamil, 'P', item.nikIbuHamil, item.hpht];
-                    } else {
-                        return [no, item.namaIbuMenyusui, item.tglLahirIbuMenyusui, 'P', item.nikIbuMenyusui, item.namaAnak, item.nikAnak, item.tglLahirAnak];
-                    }
-                });
-
-                doc.autoTable({
-                    startY: 36,
-                    head: [config.pdfHeaders],
-                    body: rows,
-                    theme: 'grid',
-                    headStyles: {
-                        fillColor: [252, 211, 77],
-                        textColor: [15, 23, 42],
-                        fontStyle: 'bold',
-                        fontSize: 8.5,
-                        halign: 'center'
-                    },
-                    bodyStyles: {
-                        fontSize: 8.5,
-                        textColor: [30, 41, 59]
-                    },
-                    columnStyles: {
-                        0: { halign: 'center', cellWidth: 12 }
-                    },
-                    styles: {
-                        cellPadding: 2.5,
-                        lineColor: [203, 213, 225],
-                        lineWidth: 0.2
-                    }
-                });
-
-                const fileName = `Data_${config.sheetName}_MBG_${now.toISOString().slice(0, 10)}.pdf`;
-                doc.save(fileName);
-                showToast('File PDF berhasil diunduh!', 'success');
-            } catch (err) {
-                console.error('Gagal export PDF:', err);
-                showToast('Terjadi kesalahan saat membuat PDF.', 'error');
-            }
-        }
-
-        // --- KONEKSI LANGSUNG KE GOOGLE SHEETS ---
-        function cleanNik(val) {
-            return String(val || '').replace(/^'+/, '').replace(/[^0-9]/g, '');
-        }
-
-        function buildDeterministicId(category, item, idx) {
-            if (item && item.id && String(item.id).trim() !== '') {
-                return String(item.id).trim();
-            }
-            const key = category === 'balita'
-                ? `${cleanNik(item.nikBalita)}_${normalizeExactName(item.namaBalita)}`
-                : category === 'bumil'
-                    ? `${cleanNik(item.nikIbuHamil)}_${normalizeExactName(item.namaIbuHamil)}`
-                    : `${cleanNik(item.nikIbuMenyusui)}_${normalizeExactName(item.namaIbuMenyusui)}`;
-            return `MBG-${category.toUpperCase()}-${key || idx}`;
-        }
-
-        function mergeSheetWithLocal(category, sheetRows) {
-            const localRows = db[category] || [];
-            const normalizedSheet = (sheetRows || []).map((item, idx) => {
-                const base = { ...item };
-                base.id = buildDeterministicId(category, base, idx);
-                if (category === 'balita') {
-                    base.nikBalita = cleanNik(base.nikBalita);
-                    base.nikIbu = cleanNik(base.nikIbu);
-                    if (base.tglLahirBalita) base.tglLahirBalita = formatToDDMMYYYY(base.tglLahirBalita);
-                } else if (category === 'bumil') {
-                    base.nikIbuHamil = cleanNik(base.nikIbuHamil);
-                    if (base.tglLahirIbuHamil) base.tglLahirIbuHamil = formatToDDMMYYYY(base.tglLahirIbuHamil);
-                    if (base.hpht) base.hpht = formatToDDMMYYYY(base.hpht);
-                } else if (category === 'busui') {
-                    base.nikIbuMenyusui = cleanNik(base.nikIbuMenyusui);
-                    base.nikAnak = cleanNik(base.nikAnak);
-                    if (base.tglLahirIbuMenyusui) base.tglLahirIbuMenyusui = formatToDDMMYYYY(base.tglLahirIbuMenyusui);
-                    if (base.tglLahirAnak) base.tglLahirAnak = formatToDDMMYYYY(base.tglLahirAnak);
-                }
-                return base;
-            });
-
-            // Jika Google Sheet mengembalikan kosong padahal lokal punya data, pertahankan data lokal
-            if (normalizedSheet.length === 0 && localRows.length > 0) {
-                return localRows;
-            }
-
-            // Gabungkan data Google Sheet dengan data lokal yang belum masuk ke Sheet agar tidak hilang
-            const mergedMap = new Map();
-            normalizedSheet.forEach(row => mergedMap.set(String(row.id), row));
-            localRows.forEach(row => {
-                const rowId = String(row.id);
-                if (!mergedMap.has(rowId)) {
-                    mergedMap.set(rowId, row);
-                }
-            });
-
-            return Array.from(mergedMap.values());
-        }
-
-        async function sendToGoogleSheet(action, category, record) {
-            if (!GOOGLE_SHEET_WEB_APP_URL) return;
-
-            const indicator = document.getElementById('sync-indicator');
-            if (indicator) {
-                indicator.classList.remove('hidden');
-                indicator.classList.add('flex');
-            }
-
-            try {
-                await fetch(GOOGLE_SHEET_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({
-                        action: action,
-                        category: category,
-                        record: record
-                    })
-                });
-            } catch (err) {
-                console.error('Gagal kirim ke Google Sheet:', err);
-                showToast('Data tersimpan di perangkat, namun gagal terkirim ke Google Sheet.', 'warning');
-            } finally {
-                if (indicator) {
-                    indicator.classList.add('hidden');
-                    indicator.classList.remove('flex');
-                }
-            }
-        }
-
-        async function loadFromGoogleSheetOnce(forceNotify = false) {
-            if (!GOOGLE_SHEET_WEB_APP_URL) return;
-
-            const indicator = document.getElementById('sync-indicator');
-            if (indicator) {
-                indicator.classList.remove('hidden');
-                indicator.classList.add('flex');
-            }
-
-            try {
-                const url = `${GOOGLE_SHEET_WEB_APP_URL}?action=read&t=${Date.now()}`;
-                const res = await fetch(url, {
-                    method: 'GET',
-                    redirect: 'follow',
-                    cache: 'no-store'
-                });
-                
-                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-                const json = await res.json();
-
-                if (json.status === 'success' && json.data) {
-                    db = {
-                        balita: mergeSheetWithLocal('balita', json.data.balita),
-                        bumil: mergeSheetWithLocal('bumil', json.data.bumil),
-                        busui: mergeSheetWithLocal('busui', json.data.busui)
-                    };
-                    saveDatabase();
-                    renderTable();
-                    renderPublicSummary();
-                    if (forceNotify) {
-                        showToast('Data dari Google Sheets berhasil dimuat!', 'success');
-                    }
-                }
-            } catch (err) {
-                console.error('Gagal memuat data awal dari Google Sheet:', err);
-                if (forceNotify) {
-                    showToast('Gagal memuat dari Google Sheets, menampilkan data tersimpan di perangkat.', 'warning');
-                }
-            } finally {
-                if (indicator) {
-                    indicator.classList.add('hidden');
-                    indicator.classList.remove('flex');
-                }
-            }
-        }
-    </script>
+        renderPublic();
+        renderTable();
+        refreshDatalists();
+        showToast('Data berhasil dihapus.', 'success');
+      } catch (err) {
+        showToast('Gagal menghapus: ' + err.message, 'error');
+      }
+    }
+
+    function exportActivePdf() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const rows = getFilteredRecords();
+      const labelMap = { balita: 'BALITA', ibuHamil: 'IBU HAMIL', ibuMenyusui: 'IBU MENYUSUI' };
+      doc.setFontSize(14);
+      doc.text('LAPORAN PENERIMA MAKAN BERGIZI GRATIS (MBG)', 14, 15);
+      doc.setFontSize(10);
+      doc.text('Kategori: ' + labelMap[activeTab] + ' | Total: ' + rows.length + ' data', 14, 22);
+
+      let head = [];
+      let body = [];
+      if (activeTab === 'balita') {
+        head = [['No.', 'Nama Balita', 'Tgl Lahir', 'L/P', 'NIK Balita', 'Nama Ibu', 'NIK Ibu']];
+        body = rows.map((r, idx) => [idx + 1, r.namaBalita, r.tglLahirBalita, r.gender, r.nikBalita, r.namaIbu, r.nikIbu]);
+      } else if (activeTab === 'ibuHamil') {
+        head = [['No.', 'Nama Ibu Hamil', 'Tgl Lahir', 'Gender', 'NIK Ibu Hamil', 'HPHT']];
+        body = rows.map((r, idx) => [idx + 1, r.namaIbuHamil, r.tglLahirIbuHamil, r.gender, r.nikIbuHamil, r.hpht]);
+      } else {
+        head = [['No.', 'Nama Ibu Menyusui', 'Tgl Lahir Ibu', 'Gender', 'NIK Ibu', 'Nama Anak', 'NIK Anak', 'Tgl Lahir Anak']];
+        body = rows.map((r, idx) => [idx + 1, r.namaIbuMenyusui, r.tglLahirIbu, r.gender, r.nikIbu, r.namaAnak, r.nikAnak, r.tglLahirAnak]);
+      }
+
+      doc.autoTable({ startY: 27, head, body, styles: { fontSize: 8.5 }, headStyles: { fillColor: [99, 102, 241] } }); // Warna Indigo
+      doc.save('laporan-mbg-' + activeTab + '.pdf');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      loadAllData();
+    });
+  </script>
 </body>
 </html>
