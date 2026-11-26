@@ -201,6 +201,56 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Menu Pencarian Penerima Manfaat (Lintas Kategori) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
+                <div class="px-5 py-4 bg-sky-50/80 border-b border-sky-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-extrabold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                            <i data-lucide="search" class="w-5 h-5 text-sky-600"></i>
+                            <span>Cek & Pencarian Data Penerima Manfaat</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Cari berdasarkan Nama Balita, Nama Ibu, atau NIK di seluruh kategori.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5" id="public-filter-pills">
+                        <button type="button" onclick="setPublicSearchCategory('all')" data-cat="all"
+                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white shadow-xs transition">
+                            Semua
+                        </button>
+                        <button type="button" onclick="setPublicSearchCategory('balita')" data-cat="balita"
+                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                            Balita
+                        </button>
+                        <button type="button" onclick="setPublicSearchCategory('bumil')" data-cat="bumil"
+                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                            Ibu Hamil
+                        </button>
+                        <button type="button" onclick="setPublicSearchCategory('busui')" data-cat="busui"
+                            class="pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                            Ibu Menyusui
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-4 sm:p-5 space-y-4">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </span>
+                        <input type="text" id="public-search-input" oninput="renderPublicSearchResults()"
+                            placeholder="Ketik nama penerima manfaat atau NIK untuk mengecek status..."
+                            class="w-full pl-12 pr-24 py-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition">
+                        <button type="button" id="public-search-clear" onclick="clearPublicSearch()"
+                            class="hidden absolute inset-y-2 right-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition">
+                            Hapus
+                        </button>
+                    </div>
+
+                    <div id="public-search-results" class="space-y-2.5">
+                        <!-- Hasil pencarian publik dirender otomatis di sini -->
+                    </div>
+                </div>
+            </div>
         </main>
 
         <footer class="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-500">
@@ -504,8 +554,8 @@
                         class="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">
                         Batal
                     </button>
-                    <button type="submit" 
-                        class="w-full sm:w-auto px-6 py-3 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold rounded-xl shadow-md shadow-sky-200 text-sm transition flex items-center justify-center gap-2">
+                    <button type="submit" id="modal-save-btn"
+                        class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-md shadow-emerald-200 text-sm transition flex items-center justify-center gap-2">
                         <i data-lucide="check-circle" class="w-4 h-4"></i>
                         <span>SIMPAN PERUBAHAN</span>
                     </button>
@@ -537,10 +587,13 @@
         };
 
         let currentTab = 'balita'; // 'balita' | 'bumil' | 'busui'
+        let publicSearchCategory = 'all'; // 'all' | 'balita' | 'bumil' | 'busui'
         let deleteTargetId = null;
         let currentAdminUser = localStorage.getItem('mbg_active_admin') || 'ADMIN1';
         let activeLocks = { balita: {}, bumil: {}, busui: {} };
         let autoSyncTimer = null;
+        let isMutating = false; // Mencegah auto-sync menimpa saat proses simpan/edit/hapus berlangsung
+        let lastMutationTime = 0;
 
         let db = {
             balita: [],
@@ -710,6 +763,116 @@
             const now = new Date();
             document.getElementById('public-last-updated').textContent =
                 `Diperbarui pukul ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
+
+            renderPublicSearchResults();
+        }
+
+        function setPublicSearchCategory(cat) {
+            publicSearchCategory = cat;
+            document.querySelectorAll('.pub-cat-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = 'pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white shadow-xs transition';
+                } else {
+                    btn.className = 'pub-cat-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+                }
+            });
+            renderPublicSearchResults();
+        }
+
+        function clearPublicSearch() {
+            const input = document.getElementById('public-search-input');
+            if (input) input.value = '';
+            renderPublicSearchResults();
+        }
+
+        function maskNikPublic(nik) {
+            const clean = cleanNik(nik);
+            if (clean.length < 8) return clean || '-';
+            return `${clean.slice(0, 6)}******${clean.slice(-4)}`;
+        }
+
+        function renderPublicSearchResults() {
+            const input = document.getElementById('public-search-input');
+            const clearBtn = document.getElementById('public-search-clear');
+            const container = document.getElementById('public-search-results');
+            if (!input || !container) return;
+
+            const keyword = input.value.toLowerCase().trim();
+            if (clearBtn) {
+                if (keyword) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            }
+
+            if (!keyword) {
+                container.innerHTML = `
+                    <div class="text-center py-6 px-4 bg-slate-50/80 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                        Ketik minimal 2 huruf nama atau angka NIK untuk menampilkan daftar penerima manfaat.
+                    </div>
+                `;
+                return;
+            }
+
+            const results = [];
+            const catsToSearch = publicSearchCategory === 'all' ? ['balita', 'bumil', 'busui'] : [publicSearchCategory];
+
+            catsToSearch.forEach(cat => {
+                (db[cat] || []).forEach(item => {
+                    const hay = Object.values(item).join(' ').toLowerCase();
+                    if (hay.includes(keyword)) {
+                        results.push({ category: cat, item });
+                    }
+                });
+            });
+
+            if (results.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 px-4 bg-amber-50/70 rounded-2xl border border-amber-200/70 text-xs sm:text-sm text-amber-800 font-medium">
+                        Data dengan kata kunci "<strong>${escapeHtml(input.value)}</strong>" tidak ditemukan.
+                    </div>
+                `;
+                return;
+            }
+
+            const badgeMap = {
+                balita: { label: 'Balita', cls: 'bg-sky-100 text-sky-800' },
+                bumil: { label: 'Ibu Hamil', cls: 'bg-rose-100 text-rose-800' },
+                busui: { label: 'Ibu Menyusui', cls: 'bg-amber-100 text-amber-900' }
+            };
+
+            container.innerHTML = `
+                <p class="text-xs font-semibold text-slate-500 px-1">Ditemukan <strong class="text-slate-800">${results.length}</strong> data penerima:</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                    ${results.slice(0, 30).map(({ category, item }) => {
+                        const badge = badgeMap[category];
+                        let titleName = '';
+                        let subInfo = '';
+                        if (category === 'balita') {
+                            titleName = item.namaBalita;
+                            subInfo = `NIK: ${maskNikPublic(item.nikBalita)} &bull; Ibu: ${escapeHtml(item.namaIbu)}`;
+                        } else if (category === 'bumil') {
+                            titleName = item.namaIbuHamil;
+                            subInfo = `NIK: ${maskNikPublic(item.nikIbuHamil)} &bull; Tgl Lahir: ${escapeHtml(item.tglLahirIbuHamil)}`;
+                        } else {
+                            titleName = item.namaIbuMenyusui;
+                            subInfo = `NIK: ${maskNikPublic(item.nikIbuMenyusui)} &bull; Anak: ${escapeHtml(item.namaAnak)}`;
+                        }
+                        return `
+                            <div class="p-3.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/80 rounded-2xl flex items-start justify-between gap-3 transition">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${badge.cls}">${badge.label}</span>
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Terdaftar
+                                        </span>
+                                    </div>
+                                    <p class="font-bold text-slate-900 text-sm truncate">${escapeHtml(titleName)}</p>
+                                    <p class="text-xs text-slate-500 mt-0.5 truncate">${subInfo}</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
         }
 
         function showPublicViewer() {
@@ -797,18 +960,50 @@
         // --- FORMATTER TANGGAL (YYYY-MM-DD <-> DD/MM/YYYY) ---
         function formatToDDMMYYYY(isoDate) {
             if (!isoDate) return '-';
-            if (isoDate.includes('/')) return isoDate;
-            const parts = isoDate.split('-');
-            if (parts.length !== 3) return isoDate;
-            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            const str = String(isoDate).trim();
+            if (str.includes('T')) {
+                const d = new Date(str);
+                if (!isNaN(d.getTime())) {
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    return `${dd}/${mm}/${yyyy}`;
+                }
+            }
+            if (str.includes('/')) {
+                const p = str.split('/');
+                if (p.length === 3) {
+                    return `${p[0].padStart(2, '0')}/${p[1].padStart(2, '0')}/${p[2]}`;
+                }
+                return str;
+            }
+            const parts = str.split('-');
+            if (parts.length !== 3) return str;
+            return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
         }
 
         function formatToISO(ddmmyyyy) {
             if (!ddmmyyyy) return '';
-            if (ddmmyyyy.includes('-')) return ddmmyyyy;
-            const parts = ddmmyyyy.split('/');
-            if (parts.length !== 3) return ddmmyyyy;
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            const str = String(ddmmyyyy).trim();
+            if (str.includes('T')) {
+                const d = new Date(str);
+                if (!isNaN(d.getTime())) {
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+            }
+            if (str.includes('-')) {
+                const p = str.split('-');
+                if (p.length === 3 && p[0].length === 4) {
+                    return `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
+                }
+                return str;
+            }
+            const parts = str.split('/');
+            if (parts.length !== 3) return '';
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
 
         // --- VALIDASI HPHT MAKSIMAL 11 BULAN KE BELAKANG ---
@@ -886,12 +1081,18 @@
                         <input type="text" id="${inputId}" name="${field.name}" value="P" readonly
                             class="w-full px-3.5 py-3 bg-slate-200/70 border border-slate-300 rounded-xl text-sm font-bold text-slate-600 cursor-not-allowed outline-none">`;
                 } else if (field.type === 'nik') {
+                    const cleanVal = cleanNik(val).slice(0, 16);
                     inputHtml = `
-                        <input type="text" id="${inputId}" name="${field.name}" value="${val}"
-                            inputmode="numeric" maxlength="16" pattern="[0-9]{16}"
-                            placeholder="${field.placeholder}" required
-                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)"
-                            class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors">`;
+                        <div class="relative">
+                            <input type="text" id="${inputId}" name="${field.name}" value="${cleanVal}"
+                                inputmode="numeric" maxlength="16"
+                                placeholder="${field.placeholder}" required
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16); updateNikCounter('${inputId}')"
+                                class="w-full px-3.5 pr-14 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors">
+                            <span id="${inputId}-counter" class="absolute inset-y-0 right-3 flex items-center text-[11px] font-mono font-bold ${cleanVal.length === 16 ? 'text-emerald-600' : 'text-slate-400'}">
+                                ${cleanVal.length}/16
+                            </span>
+                        </div>`;
                 } else if (field.type === 'date') {
                     const isoVal = formatToISO(val);
                     const warningBoxId = prefix === 'modal-field' ? 'modal-validation-warning' : 'validation-warning';
@@ -905,7 +1106,7 @@
                         ? `oninput="handleNameAutoFill(this.value, '${field.name}', '${prefix}')" onblur="handleNameAutoFill(this.value, '${field.name}', '${prefix}')"`
                         : '';
                     inputHtml = `
-                        <input type="text" id="${inputId}" name="${field.name}" value="${val}"
+                        <input type="text" id="${inputId}" name="${field.name}" value="${escapeHtml(val)}"
                             placeholder="${field.placeholder || ''}" required ${autoFillAttr}
                             class="w-full px-3.5 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none">`;
                 }
@@ -918,6 +1119,15 @@
                 `;
                 container.appendChild(wrapper);
             });
+        }
+
+        function updateNikCounter(inputId) {
+            const input = document.getElementById(inputId);
+            const counter = document.getElementById(`${inputId}-counter`);
+            if (!input || !counter) return;
+            const len = input.value.length;
+            counter.textContent = `${len}/16`;
+            counter.className = `absolute inset-y-0 right-3 flex items-center text-[11px] font-mono font-bold ${len === 16 ? 'text-emerald-600' : 'text-amber-600'}`;
         }
 
         // --- ISI OTOMATIS NIK LINTAS SEMUA SHEET JIKA NAMA SAMA PERSIS ---
@@ -1007,6 +1217,7 @@
             const nikEl = document.getElementById(`${prefix}-${mapping.nikField}`);
             if (nikEl && nikEl.value !== match.nik) {
                 nikEl.value = match.nik;
+                updateNikCounter(`${prefix}-${mapping.nikField}`);
                 nikEl.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-900');
                 setTimeout(() => {
                     nikEl.classList.remove('bg-emerald-50', 'border-emerald-500', 'text-emerald-900');
@@ -1097,6 +1308,7 @@
             if (editId) {
                 const idx = db[currentTab].findIndex(item => item.id === editId);
                 if (idx !== -1) {
+                    lastMutationTime = Date.now();
                     db[currentTab][idx] = entry;
                     saveDatabase();
                     renderTable();
@@ -1105,6 +1317,7 @@
                     syncToGoogleSheet('update', currentTab, entry);
                 }
             } else {
+                lastMutationTime = Date.now();
                 db[currentTab].push(entry);
                 saveDatabase();
                 renderTable();
@@ -1163,17 +1376,22 @@
             e.preventDefault();
             const config = TAB_CONFIG[currentTab];
             const editId = document.getElementById('modal-edit-id').value;
-            if (!editId) return;
+            if (!editId) {
+                showToast('ID data tidak ditemukan. Silakan tutup dan ulangi edit.', 'error');
+                return;
+            }
 
             const updatedEntry = { id: editId };
 
             for (const field of config.fields) {
                 const el = document.getElementById(`modal-field-${field.name}`);
+                if (!el) continue;
                 let val = el.value.trim();
 
                 if (field.type === 'nik') {
+                    val = cleanNik(val);
                     if (val.length !== 16) {
-                        showToast(`${field.label} harus berjumlah tepat 16 digit angka!`, 'error');
+                        showToast(`${field.label} harus berjumlah tepat 16 digit angka (saat ini ${val.length} digit)!`, 'error');
                         el.focus();
                         return;
                     }
@@ -1188,20 +1406,38 @@
                 }
 
                 if (field.type === 'date') {
+                    if (!val) {
+                        showToast(`${field.label} wajib diisi!`, 'error');
+                        el.focus();
+                        return;
+                    }
                     val = formatToDDMMYYYY(val);
                 }
 
                 updatedEntry[field.name] = val;
             }
 
-            const idx = db[currentTab].findIndex(item => item.id === editId);
+            const idx = db[currentTab].findIndex(item => String(item.id) === String(editId));
             if (idx !== -1) {
+                lastMutationTime = Date.now();
                 db[currentTab][idx] = updatedEntry;
                 releaseEditLock(currentTab, editId);
                 saveDatabase();
                 renderTable();
+                renderPublicSummary();
                 closeEditModal();
                 showToast(`Perubahan oleh ${currentAdminUser} berhasil disimpan!`, 'success');
+                syncToGoogleSheet('update', currentTab, updatedEntry);
+            } else {
+                // Fallback jika data sempat bergeser saat sinkronisasi
+                lastMutationTime = Date.now();
+                db[currentTab].push(updatedEntry);
+                releaseEditLock(currentTab, editId);
+                saveDatabase();
+                renderTable();
+                renderPublicSummary();
+                closeEditModal();
+                showToast(`Perubahan berhasil disimpan!`, 'success');
                 syncToGoogleSheet('update', currentTab, updatedEntry);
             }
         }
@@ -1226,9 +1462,11 @@
             document.getElementById('confirm-delete-btn').onclick = () => {
                 if (deleteTargetId) {
                     const targetItem = db[currentTab].find(item => item.id === deleteTargetId);
+                    lastMutationTime = Date.now();
                     db[currentTab] = db[currentTab].filter(item => item.id !== deleteTargetId);
                     saveDatabase();
                     renderTable();
+                    renderPublicSummary();
                     closeDeleteModal();
                     showToast('Data berhasil dihapus.', 'success');
                     if (targetItem) {
@@ -1478,6 +1716,8 @@
         async function syncToGoogleSheet(action, category, record) {
             if (!GOOGLE_SHEET_WEB_APP_URL) return;
 
+            isMutating = true;
+            lastMutationTime = Date.now();
             try {
                 await fetch(GOOGLE_SHEET_WEB_APP_URL, {
                     method: 'POST',
@@ -1492,6 +1732,11 @@
             } catch (err) {
                 console.error('Gagal kirim ke Google Sheet:', err);
                 showToast('Data tersimpan di HP, namun gagal kirim ke Google Sheet.', 'warning');
+            } finally {
+                lastMutationTime = Date.now();
+                setTimeout(() => {
+                    isMutating = false;
+                }, 2500);
             }
         }
 
@@ -1500,6 +1745,12 @@
                 if (!silent) {
                     showToast('URL Google Sheet belum dikonfigurasi. Data tersimpan lokal di perangkat.', 'info');
                 }
+                return;
+            }
+
+            // Jangan tarik data saat modal edit terbuka atau baru saja melakukan perubahan (< 5 detik)
+            const editModalOpen = !document.getElementById('edit-modal')?.classList.contains('hidden');
+            if (silent && (isMutating || editModalOpen || (Date.now() - lastMutationTime < 5000))) {
                 return;
             }
 
@@ -1519,6 +1770,11 @@
                 
                 if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                 const json = await res.json();
+
+                // Pastikan tidak ada mutasi baru yang terjadi selama proses fetch berlangsung
+                if (silent && (isMutating || (Date.now() - lastMutationTime < 5000))) {
+                    return;
+                }
 
                 if (json.status === 'success' && json.data) {
                     db = {
