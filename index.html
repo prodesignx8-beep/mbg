@@ -348,7 +348,14 @@
                         <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span>Petugas Aktif: <strong id="active-admin-badge" class="text-amber-300">-</strong></span>
                     </div>
-                    <span class="text-sky-200/90 hidden sm:inline">Terhubung Otomatis ke Google Sheets</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sky-200/90 hidden sm:inline">Terhubung Otomatis ke Google Sheets</span>
+                        <button type="button" onclick="loadFromGoogleSheetOnce(true)"
+                            class="px-2.5 py-1 bg-sky-700 hover:bg-sky-600 text-amber-300 font-bold rounded-lg text-[11px] flex items-center gap-1 transition">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                            <span>Muat Ulang Sheet</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -562,7 +569,7 @@
         // =========================================================================
         // KONFIGURASI GOOGLE APPS SCRIPT & PENYIMPANAN LOKAL
         // =========================================================================
-        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxuG4rh5pstYWTg5R5NxsAk7RUeL75-7wCr47cFRfBBiwL3DTrUlv3e8ambZ5TiysqA/exec';
+        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyCBcFNhs_hYIOQXqyuCLfROUwaCvPE6sWx75Fq3q9_J1QOuXKx9VIbUq-yNW3E73zA/exec';
 
         const STORAGE_KEYS = {
             AUTH: 'mbg_auth_logged_in',
@@ -866,7 +873,7 @@
             closeLoginModal();
             document.getElementById('public-viewer').classList.remove('hidden');
             renderPublicSummary();
-            loadFromGoogleSheetOnce();
+            loadFromGoogleSheetOnce(false);
             lucide.createIcons();
         }
 
@@ -901,8 +908,8 @@
             document.getElementById('main-app').classList.remove('hidden');
             document.getElementById('active-admin-badge').textContent = currentAdminUser;
             switchTab(currentTab);
-            // Muat data awal dari Google Sheet saat pertama kali masuk
-            loadFromGoogleSheetOnce();
+            // Muat data awal dari Google Sheet tanpa menimpa data lokal jika Sheet kosong
+            loadFromGoogleSheetOnce(false);
         }
 
         // --- PENYIMPANAN LOCALSTORAGE ---
@@ -1599,6 +1606,58 @@
             return String(val || '').replace(/^'+/, '').replace(/[^0-9]/g, '');
         }
 
+        function buildDeterministicId(category, item, idx) {
+            if (item && item.id && String(item.id).trim() !== '') {
+                return String(item.id).trim();
+            }
+            const key = category === 'balita'
+                ? `${cleanNik(item.nikBalita)}_${normalizeExactName(item.namaBalita)}`
+                : category === 'bumil'
+                    ? `${cleanNik(item.nikIbuHamil)}_${normalizeExactName(item.namaIbuHamil)}`
+                    : `${cleanNik(item.nikIbuMenyusui)}_${normalizeExactName(item.namaIbuMenyusui)}`;
+            return `MBG-${category.toUpperCase()}-${key || idx}`;
+        }
+
+        function mergeSheetWithLocal(category, sheetRows) {
+            const localRows = db[category] || [];
+            const normalizedSheet = (sheetRows || []).map((item, idx) => {
+                const base = { ...item };
+                base.id = buildDeterministicId(category, base, idx);
+                if (category === 'balita') {
+                    base.nikBalita = cleanNik(base.nikBalita);
+                    base.nikIbu = cleanNik(base.nikIbu);
+                    if (base.tglLahirBalita) base.tglLahirBalita = formatToDDMMYYYY(base.tglLahirBalita);
+                } else if (category === 'bumil') {
+                    base.nikIbuHamil = cleanNik(base.nikIbuHamil);
+                    if (base.tglLahirIbuHamil) base.tglLahirIbuHamil = formatToDDMMYYYY(base.tglLahirIbuHamil);
+                    if (base.hpht) base.hpht = formatToDDMMYYYY(base.hpht);
+                } else if (category === 'busui') {
+                    base.nikIbuMenyusui = cleanNik(base.nikIbuMenyusui);
+                    base.nikAnak = cleanNik(base.nikAnak);
+                    if (base.tglLahirIbuMenyusui) base.tglLahirIbuMenyusui = formatToDDMMYYYY(base.tglLahirIbuMenyusui);
+                    if (base.tglLahirAnak) base.tglLahirAnak = formatToDDMMYYYY(base.tglLahirAnak);
+                }
+                return base;
+            });
+
+            // Jika Google Sheet mengembalikan kosong padahal lokal punya data, pertahankan data lokal
+            if (normalizedSheet.length === 0 && localRows.length > 0) {
+                return localRows;
+            }
+
+            // Gabungkan data Google Sheet dengan data lokal yang belum masuk ke Sheet agar tidak hilang
+            const mergedMap = new Map();
+            normalizedSheet.forEach(row => mergedMap.set(String(row.id), row));
+            localRows.forEach(row => {
+                const rowId = String(row.id);
+                if (!mergedMap.has(rowId)) {
+                    mergedMap.set(rowId, row);
+                }
+            });
+
+            return Array.from(mergedMap.values());
+        }
+
         async function sendToGoogleSheet(action, category, record) {
             if (!GOOGLE_SHEET_WEB_APP_URL) return;
 
@@ -1630,7 +1689,7 @@
             }
         }
 
-        async function loadFromGoogleSheetOnce() {
+        async function loadFromGoogleSheetOnce(forceNotify = false) {
             if (!GOOGLE_SHEET_WEB_APP_URL) return;
 
             const indicator = document.getElementById('sync-indicator');
@@ -1652,30 +1711,22 @@
 
                 if (json.status === 'success' && json.data) {
                     db = {
-                        balita: (json.data.balita || []).map(item => ({
-                            ...item,
-                            id: String(item.id || ('MBG-' + Math.random().toString(36).slice(2))),
-                            nikBalita: cleanNik(item.nikBalita),
-                            nikIbu: cleanNik(item.nikIbu)
-                        })),
-                        bumil: (json.data.bumil || []).map(item => ({
-                            ...item,
-                            id: String(item.id || ('MBG-' + Math.random().toString(36).slice(2))),
-                            nikIbuHamil: cleanNik(item.nikIbuHamil)
-                        })),
-                        busui: (json.data.busui || []).map(item => ({
-                            ...item,
-                            id: String(item.id || ('MBG-' + Math.random().toString(36).slice(2))),
-                            nikIbuMenyusui: cleanNik(item.nikIbuMenyusui),
-                            nikAnak: cleanNik(item.nikAnak)
-                        }))
+                        balita: mergeSheetWithLocal('balita', json.data.balita),
+                        bumil: mergeSheetWithLocal('bumil', json.data.bumil),
+                        busui: mergeSheetWithLocal('busui', json.data.busui)
                     };
                     saveDatabase();
                     renderTable();
                     renderPublicSummary();
+                    if (forceNotify) {
+                        showToast('Data dari Google Sheets berhasil dimuat!', 'success');
+                    }
                 }
             } catch (err) {
                 console.error('Gagal memuat data awal dari Google Sheet:', err);
+                if (forceNotify) {
+                    showToast('Gagal memuat dari Google Sheets, menampilkan data tersimpan di perangkat.', 'warning');
+                }
             } finally {
                 if (indicator) {
                     indicator.classList.add('hidden');
