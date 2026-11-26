@@ -60,7 +60,7 @@
           DATA REAL-TIME
         </div>
         <h1 class="text-2xl sm:text-4xl font-bold tracking-tight pb-1">
-          Rekapitulasi Penerima Manfaat MBG
+          Daftar Penerima Manfaat MBG
         </h1>
         <p class="text-sm sm:text-base text-blue-50 leading-relaxed max-w-xl">
           Informasi terbuka jumlah sasaran penerima Program Makan Bergizi Gratis (MBG) Pos 5 Bakalankrapyak berdasarkan kategori kelompok sasaran.
@@ -345,6 +345,12 @@
       setTimeout(() => el.remove(), 3500);
     }
 
+    function maskNik(val) {
+      const str = String(val || '');
+      if (str.length <= 4) return str;
+      return str.substring(0, 4) + 'x'.repeat(str.length - 4);
+    }
+
     function sanitizeNik(val) {
       return String(val || '').replace(/\D/g, '').slice(0, 16);
     }
@@ -538,13 +544,13 @@
       body.innerHTML = rows.map((r, idx) => {
         let cells = [];
         if (viewerTab === 'balita') {
-          cells = [idx + 1, r.namaBalita, r.tglLahirBalita, r.gender, r.nikBalita, r.namaIbu, r.nikIbu];
+          cells = [idx + 1, r.namaBalita, r.tglLahirBalita, r.gender, maskNik(r.nikBalita), r.namaIbu, maskNik(r.nikIbu)];
         } else if (viewerTab === 'ibuHamil') {
-          cells = [idx + 1, r.namaIbuHamil, r.tglLahirIbuHamil, r.gender, r.nikIbuHamil, r.hpht];
+          cells = [idx + 1, r.namaIbuHamil, r.tglLahirIbuHamil, r.gender, maskNik(r.nikIbuHamil), r.hpht];
         } else {
-          cells = [idx + 1, r.namaIbuMenyusui, r.tglLahirIbu, r.gender, r.nikIbu, r.namaAnak, r.nikAnak, r.tglLahirAnak];
+          cells = [idx + 1, r.namaIbuMenyusui, r.tglLahirIbu, r.gender, maskNik(r.nikIbu), r.namaAnak, maskNik(r.nikAnak), r.tglLahirAnak];
         }
-        const tdHtml = cells.map((c, i) => '<td class="px-3 py-2.5 whitespace-nowrap ' + (i === 0 || String(c).length === 16 ? 'font-mono tabular-nums' : '') + '">' + escapeHtml(c || '-') + '</td>').join('');
+        const tdHtml = cells.map((c, i) => '<td class="px-3 py-2.5 whitespace-nowrap ' + (i === 0 || String(c).length === 16 ? 'font-mono tabular-nums tracking-wider' : '') + '">' + escapeHtml(c || '-') + '</td>').join('');
         return '<tr class="hover:bg-slate-50">' + tdHtml + '</tr>';
       }).join('');
     }
